@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Familias Primero",
+    "slug": "familias-primero",
+    "scheme": "familiasprimero",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "cl.familiasprimero.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Se usa la cámara para tomar la foto del curso y registrar la asistencia."
+      }
+    },
+    "android": {
+      "package": "cl.familiasprimero.app",
+      "permissions": ["CAMERA"]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "experiments": {
+      "baseUrl": "/familias-primero-prototipo"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Se usa la cámara para tomar la foto del curso y registrar la asistencia."
+        }
+      ]
+    ]
+  }
+}
