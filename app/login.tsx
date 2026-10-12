@@ -27,13 +27,16 @@ export default function Login() {
   const [role, setRole] = useState<Role | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
 
-  // Para admin/coordinador/tutor: usuarios de ese rol en la organización elegida.
+  // El tutor no elige organización en la demo (es irrelevante para ese rol):
+  // la organización se infiere de su usuario.
+  const needsOrg = role === 'admin' || role === 'coordinador';
+
+  // Usuarios del rol elegido. Para tutor, todos; para admin/coordinador, los de la org.
   const staffUsers = useMemo(() => {
     if (!role || role === 'apoderado' || role === 'superusuario') return [];
+    if (role === 'tutor') return users.filter((u) => u.role === 'tutor');
     return users.filter((u) => u.role === role && (!orgId || u.orgId === orgId));
   }, [role, orgId, users]);
-
-  const needsOrg = role === 'admin' || role === 'coordinador' || role === 'tutor';
 
   const enterStaff = (userId: string) => {
     const u = users.find((x) => x.id === userId);
@@ -83,7 +86,21 @@ export default function Login() {
         </View>
       ) : null}
 
-      {/* Staff: elegir organización y luego usuario */}
+      {/* Tutor: elige directamente su usuario (sin elegir organización) */}
+      {role === 'tutor' ? (
+        <View style={styles.identityBox}>
+          <Text style={styles.sectionLabel}>Elige tu usuario</Text>
+          {staffUsers.length === 0 ? (
+            <Text style={styles.empty}>No hay tutores creados.</Text>
+          ) : (
+            staffUsers.map((u) => (
+              <Button key={u.id} label={u.name} variant="secondary" onPress={() => enterStaff(u.id)} style={{ marginBottom: spacing.sm }} />
+            ))
+          )}
+        </View>
+      ) : null}
+
+      {/* Admin y coordinador: elegir organización y luego usuario */}
       {needsOrg ? (
         <View style={styles.identityBox}>
           <Select
