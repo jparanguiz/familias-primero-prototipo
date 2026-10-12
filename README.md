@@ -1,5 +1,8 @@
 # Familias Primero · Asistencia por foto con consentimiento en línea
 
+> 👋 **¿Te sumas al equipo?** Parte por **[ONBOARDING_EQUIPO.md](./ONBOARDING_EQUIPO.md)**
+> para dejar tu entorno listo y conocer el flujo de trabajo (ramas + Pull Request).
+
 Prototipo de app **nativa (Android / iOS) y web** para la Fundación Familias Primero,
 programa *Leer es Poderoso*. Cubre dos flujos en paralelo:
 
