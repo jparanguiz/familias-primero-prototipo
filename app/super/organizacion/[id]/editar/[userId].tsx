@@ -11,6 +11,7 @@ import { Select } from '@/components/Select';
 import { useAppStore } from '@/store/AppStore';
 import { StaffRole } from '@/domain/types';
 import { isValidEmail } from '@/domain/auth';
+import { pickImageFromGallery } from '@/domain/photo';
 import { colors, fonts, fontSize, radius, spacing } from '@/theme';
 
 const ROLES: { value: StaffRole; label: string }[] = [
@@ -116,7 +117,15 @@ export default function EditarUsuario() {
             <Button label="Permitir cámara" variant="secondary" onPress={requestPermission} style={{ marginTop: spacing.sm }} />
           ) : null}
           {!newSelfie ? (
-            <Button label={useRealCamera ? 'Tomar selfie' : 'Tomar selfie (simulada)'} onPress={() => setNewSelfie(`selfie_${Date.now()}`)} style={{ marginTop: spacing.sm }} />
+            <>
+              <Button label={useRealCamera ? 'Tomar selfie' : 'Tomar selfie (simulada)'} onPress={() => setNewSelfie(`selfie_${Date.now()}`)} style={{ marginTop: spacing.sm }} />
+              <Button
+                label="Subir desde galería"
+                variant="secondary"
+                onPress={async () => { const id = await pickImageFromGallery(); if (id) setNewSelfie(id); }}
+                style={{ marginTop: spacing.sm }}
+              />
+            </>
           ) : (
             <Pressable onPress={() => setNewSelfie(null)}><Text style={styles.linkBlue}>Volver a tomar</Text></Pressable>
           )}
