@@ -58,8 +58,7 @@ export function FakeStatusBar({ step }: { step?: string }) {
   return (
     <View style={styles.statusBar}>
       <Text style={styles.statusTime}>9:41</Text>
-      {step ? <Text style={styles.statusStep}>{step}</Text> : <View />}
-      <View style={styles.statusBattery} />
+      {step ? <Text style={styles.statusStep}>{step}</Text> : null}
     </View>
   );
 }
@@ -162,13 +161,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: fontSize.body,
     color: colors.blue,
-  },
-  statusBattery: {
-    width: 34,
-    height: 10,
-    borderRadius: 3,
-    borderWidth: 1,
-    borderColor: colors.textSecondary,
   },
   header: {
     paddingHorizontal: spacing.xl,
