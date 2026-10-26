@@ -10,6 +10,7 @@ import { Banner } from '@/components/Banner';
 import { useAppStore } from '@/store/AppStore';
 import { useSession } from '@/store/SessionStore';
 import { hashPassword, isValidEmail, normalizeEmail, passwordIssues } from '@/domain/auth';
+import { pickImageFromGallery } from '@/domain/photo';
 import { colors, fonts, fontSize, radius, spacing } from '@/theme';
 
 type Step = 'nombre' | 'correo' | 'codigo' | 'clave' | 'selfie';
@@ -116,10 +117,17 @@ export default function Enroll() {
     <Screen
       footer={
         step === 'selfie' && !selfieId ? (
-          <Button
-            label={useRealCamera ? 'Tomar selfie' : 'Tomar selfie (simulada)'}
-            onPress={() => setSelfieId(`selfie_${Date.now()}`)}
-          />
+          <View style={{ gap: spacing.sm }}>
+            <Button
+              label={useRealCamera ? 'Tomar selfie' : 'Tomar selfie (simulada)'}
+              onPress={() => setSelfieId(`selfie_${Date.now()}`)}
+            />
+            <Button
+              label="Subir desde galería"
+              variant="secondary"
+              onPress={async () => { const sid = await pickImageFromGallery(); if (sid) setSelfieId(sid); }}
+            />
+          </View>
         ) : (
           <Button label={footerLabel} onPress={next} />
         )

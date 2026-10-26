@@ -9,6 +9,7 @@ import { Banner } from '@/components/Banner';
 import { useAppStore } from '@/store/AppStore';
 import { useOnboarding } from '@/store/OnboardingFlow';
 import { useConsentFlow } from '@/store/ConsentFlow';
+import { pickImageFromGallery } from '@/domain/photo';
 import { colors, fonts, fontSize, radius, spacing } from '@/theme';
 
 /**
@@ -67,11 +68,18 @@ export default function OnboardingFoto() {
   return (
     <Screen
       footer={
-        <Button
-          label={hasPhoto ? 'Continuar al consentimiento' : 'Tomar / subir foto'}
-          onPress={hasPhoto ? handleContinue : takePhoto}
-          loading={busy}
-        />
+        hasPhoto ? (
+          <Button label="Continuar al consentimiento" onPress={handleContinue} loading={busy} />
+        ) : (
+          <View style={{ gap: spacing.sm }}>
+            <Button label="Tomar foto" onPress={takePhoto} />
+            <Button
+              label="Subir desde galería"
+              variant="secondary"
+              onPress={async () => { const id = await pickImageFromGallery(); if (id) setChildPhoto(id); }}
+            />
+          </View>
+        )
       }
     >
       <ScreenHeader showBack title="Foto del niño" subtitle="Se usará para registrar su asistencia" step="Onboarding" />

@@ -37,6 +37,12 @@
         {
           "cameraPermission": "Se usa la cámara para tomar la foto del curso y registrar la asistencia."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Se usa la galería para subir una foto o selfie."
+        }
       ]
     ]
   }
