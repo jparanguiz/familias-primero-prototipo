@@ -100,7 +100,7 @@ export function useSession(): SessionValue {
 }
 
 export const ROLE_LABELS: Record<Role, string> = {
-  superusuario: 'Superusuario (Fundación)',
+  superusuario: 'Superusuario',
   admin: 'Administrador',
   coordinador: 'Coordinador',
   tutor: 'Tutor del programa',
