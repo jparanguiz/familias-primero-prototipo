@@ -13,7 +13,7 @@ import { colors, fonts, fontSize, radius, spacing } from '@/theme';
 
 export default function Login() {
   const router = useRouter();
-  const { getUserByEmail } = useAppStore();
+  const { getUserByEmail, getOrg } = useAppStore();
   const { signIn } = useSession();
 
   const [email, setEmail] = useState('');
@@ -39,6 +39,14 @@ export default function Login() {
     if (!verifyPassword(password, user.passwordHash)) {
       setError('Correo o clave incorrectos.');
       return;
+    }
+    // Bloqueo por licencia suspendida (el superusuario no tiene organización).
+    if (user.role !== 'superusuario' && user.orgId) {
+      const org = getOrg(user.orgId);
+      if (org && org.license.status === 'suspendida') {
+        setError('La licencia de tu organización está suspendida. Contacta a la Fundación Familias Primero.');
+        return;
+      }
     }
     signIn({ role: user.role, userId: user.id, activeOrgId: user.orgId });
     router.replace('/');

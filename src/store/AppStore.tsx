@@ -101,6 +101,10 @@ interface AppStoreValue {
   inviteUser: (orgId: string | null, email: string, role: StaffRole) => User | { error: string };
   /** Cambia el rol de un usuario (superusuario). */
   changeUserRole: (userId: string, role: StaffRole) => void;
+  /** Quita un usuario del equipo (y sus asignaciones de zona). */
+  removeUser: (userId: string) => void;
+  /** Reenvía la invitación (simbólico en la demo: deja al usuario como 'invitado'). */
+  resendInvite: (userId: string) => void;
   /** Primer ingreso: la persona completa su enrolamiento. */
   completeEnrollment: (userId: string, data: { name: string; passwordHash: string; selfiePhotoId: string }) => void;
   /** Establece/reestablece la clave (hash) de un usuario. */
@@ -354,6 +358,24 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const removeUser = useCallback((userId: string) => {
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.filter((u) => u.id !== userId),
+      staffAssignments: prev.staffAssignments.filter((a) => a.userId !== userId),
+    }));
+  }, []);
+
+  const resendInvite = useCallback((userId: string) => {
+    // En la demo, reponer el estado 'invitado' y limpiar clave (simbólico).
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) =>
+        u.id === userId ? { ...u, status: 'invitado', passwordHash: undefined } : u
+      ),
+    }));
+  }, []);
+
   const completeEnrollment: AppStoreValue['completeEnrollment'] = useCallback(
     (userId, { name, passwordHash, selfiePhotoId }) => {
       setState((prev) => ({
@@ -558,6 +580,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       getUserByEmail,
       inviteUser,
       changeUserRole,
+      removeUser,
+      resendInvite,
       completeEnrollment,
       setUserPassword,
       createVersion,
@@ -598,6 +622,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       getUserByEmail,
       inviteUser,
       changeUserRole,
+      removeUser,
+      resendInvite,
       completeEnrollment,
       setUserPassword,
       createVersion,
