@@ -21,6 +21,11 @@ export interface Session {
   userId: string | null;
   /** Organización activa (para superusuario, elegida; para staff, su propia org). */
   activeOrgId: string | null;
+  /**
+   * Si el superusuario está "viendo como" otra persona, aquí queda su sesión
+   * original para poder volver. undefined = sesión normal.
+   */
+  impersonatorSession?: Session;
 }
 
 interface SessionValue {
@@ -31,6 +36,10 @@ interface SessionValue {
   setActiveOrgId: (id: string | null) => void;
   signIn: (session: Session) => void;
   signOut: () => void;
+  /** El superusuario entra a ver la app como otro usuario. */
+  impersonate: (target: { role: Role; userId: string; activeOrgId: string | null }) => void;
+  /** Vuelve a la sesión original del superusuario. */
+  stopImpersonating: () => void;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -85,9 +94,39 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setActiveVersionId(null);
   }, []);
 
+  const impersonate = useCallback(
+    (target: { role: Role; userId: string; activeOrgId: string | null }) => {
+      setSession((prev) => {
+        if (!prev) return prev;
+        // Guarda la sesión original (sin anidar impersonaciones).
+        const original = prev.impersonatorSession ?? prev;
+        const next: Session = {
+          role: target.role,
+          userId: target.userId,
+          activeOrgId: target.activeOrgId,
+          impersonatorSession: original,
+        };
+        persist(next);
+        return next;
+      });
+      setActiveVersionId(null);
+    },
+    []
+  );
+
+  const stopImpersonating = useCallback(() => {
+    setSession((prev) => {
+      if (!prev?.impersonatorSession) return prev;
+      const original = prev.impersonatorSession;
+      persist(original);
+      return original;
+    });
+    setActiveVersionId(null);
+  }, []);
+
   const value = useMemo<SessionValue>(
-    () => ({ ready, session, activeVersionId, setActiveVersionId, setActiveOrgId, signIn, signOut }),
-    [ready, session, activeVersionId, setActiveOrgId, signIn, signOut]
+    () => ({ ready, session, activeVersionId, setActiveVersionId, setActiveOrgId, signIn, signOut, impersonate, stopImpersonating }),
+    [ready, session, activeVersionId, setActiveOrgId, signIn, signOut, impersonate, stopImpersonating]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
