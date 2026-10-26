@@ -95,10 +95,20 @@ interface AppStoreValue {
   createOrganization: (name: string, type: OrgType, license: License) => Organization;
   setLicenseStatus: (orgId: string, status: LicenseStatus) => void;
 
+  // Usuarios y autenticación
+  getUserByEmail: (email: string) => User | undefined;
+  /** El superusuario habilita un correo con un rol (queda 'invitado'). */
+  inviteUser: (orgId: string | null, email: string, role: StaffRole) => User | { error: string };
+  /** Cambia el rol de un usuario (superusuario). */
+  changeUserRole: (userId: string, role: StaffRole) => void;
+  /** Primer ingreso: la persona completa su enrolamiento. */
+  completeEnrollment: (userId: string, data: { name: string; passwordHash: string; selfiePhotoId: string }) => void;
+  /** Establece/reestablece la clave (hash) de un usuario. */
+  setUserPassword: (userId: string, passwordHash: string) => void;
+
   // Administración (admin / superusuario)
   createVersion: (orgId: string, season: Season, year: number) => ProgramVersion;
   createZone: (orgId: string, data: { name: string; address: string; kind: ZoneKind; contact: ZoneContact }) => Zone;
-  createUser: (orgId: string | null, name: string, role: StaffRole, email?: string) => User;
   attachZoneToVersion: (versionId: string, zoneId: string, startDate: string, endDate: string) => ZoneAssignment;
   detachZoneFromVersion: (versionId: string, zoneId: string) => void;
   assignStaff: (versionId: string, userId: string, zoneId: string) => void;
@@ -316,10 +326,51 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     return zone;
   }, []);
 
-  const createUser: AppStoreValue['createUser'] = useCallback((orgId, name, role, email) => {
-    const user: User = { id: uid('u'), orgId, name, role, email };
-    setState((prev) => ({ ...prev, users: [...prev.users, user] }));
-    return user;
+  const getUserByEmail = useCallback(
+    (email: string) => {
+      const e = email.trim().toLowerCase();
+      return state.users.find((u) => u.email.trim().toLowerCase() === e);
+    },
+    [state.users]
+  );
+
+  const inviteUser: AppStoreValue['inviteUser'] = useCallback(
+    (orgId, email, role) => {
+      const e = email.trim().toLowerCase();
+      if (state.users.some((u) => u.email.trim().toLowerCase() === e)) {
+        return { error: 'Ya existe un usuario con ese correo.' };
+      }
+      const user: User = { id: uid('u'), orgId, name: '', role, email: email.trim(), status: 'invitado' };
+      setState((prev) => ({ ...prev, users: [...prev.users, user] }));
+      return user;
+    },
+    [state.users]
+  );
+
+  const changeUserRole = useCallback((userId: string, role: StaffRole) => {
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) => (u.id === userId ? { ...u, role } : u)),
+    }));
+  }, []);
+
+  const completeEnrollment: AppStoreValue['completeEnrollment'] = useCallback(
+    (userId, { name, passwordHash, selfiePhotoId }) => {
+      setState((prev) => ({
+        ...prev,
+        users: prev.users.map((u) =>
+          u.id === userId ? { ...u, name, passwordHash, selfiePhotoId, status: 'activo' } : u
+        ),
+      }));
+    },
+    []
+  );
+
+  const setUserPassword = useCallback((userId: string, passwordHash: string) => {
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) => (u.id === userId ? { ...u, passwordHash } : u)),
+    }));
   }, []);
 
   const attachZoneToVersion: AppStoreValue['attachZoneToVersion'] = useCallback(
@@ -504,9 +555,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       getEnrollmentView,
       createOrganization,
       setLicenseStatus,
+      getUserByEmail,
+      inviteUser,
+      changeUserRole,
+      completeEnrollment,
+      setUserPassword,
       createVersion,
       createZone,
-      createUser,
       attachZoneToVersion,
       detachZoneFromVersion,
       assignStaff,
@@ -540,9 +595,13 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       getEnrollmentView,
       createOrganization,
       setLicenseStatus,
+      getUserByEmail,
+      inviteUser,
+      changeUserRole,
+      completeEnrollment,
+      setUserPassword,
       createVersion,
       createZone,
-      createUser,
       attachZoneToVersion,
       detachZoneFromVersion,
       assignStaff,

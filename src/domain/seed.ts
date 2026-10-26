@@ -9,6 +9,10 @@ import {
   Zone,
   ZoneAssignment,
 } from './types';
+import { hashPassword } from './auth';
+
+/** Clave de demo para los usuarios de ejemplo ya activos. */
+const DEMO_PWD = hashPassword('demo123');
 
 // --- Organizaciones (tenants) ---
 export const ORG_FUNDACION = 'org-fundacion';
@@ -51,16 +55,19 @@ export const SEED_ZONES: Zone[] = [
 ];
 
 // --- Usuarios del staff ---
+// Usuarios ya activos con clave de demo: demo123
 export const SEED_USERS: User[] = [
-  { id: 'u-super', name: 'Super Fundación', role: 'superusuario', orgId: null, email: 'super@familiasprimero.cl' },
-  { id: 'u-admin', name: 'Admin Fundación', role: 'admin', orgId: ORG_FUNDACION, email: 'admin@familiasprimero.cl' },
-  { id: 'u-coord', name: 'Carla Coordinadora', role: 'coordinador', orgId: ORG_FUNDACION, email: 'carla@familiasprimero.cl' },
-  { id: 'u-tutor1', name: 'Pedro Tutor', role: 'tutor', orgId: ORG_FUNDACION, email: 'pedro@familiasprimero.cl' },
-  { id: 'u-tutor2', name: 'Lucía Tutora', role: 'tutor', orgId: ORG_FUNDACION, email: 'lucia@familiasprimero.cl' },
-  { id: 'u-tutor3', name: 'Diego Tutor', role: 'tutor', orgId: ORG_FUNDACION, email: 'diego@familiasprimero.cl' },
+  { id: 'u-super', name: 'Super Fundación', role: 'superusuario', orgId: null, email: 'super@familiasprimero.cl', status: 'activo', passwordHash: DEMO_PWD },
+  { id: 'u-admin', name: 'Admin Fundación', role: 'admin', orgId: ORG_FUNDACION, email: 'admin@familiasprimero.cl', status: 'activo', passwordHash: DEMO_PWD },
+  { id: 'u-coord', name: 'Carla Coordinadora', role: 'coordinador', orgId: ORG_FUNDACION, email: 'carla@familiasprimero.cl', status: 'activo', passwordHash: DEMO_PWD },
+  { id: 'u-tutor1', name: 'Pedro Tutor', role: 'tutor', orgId: ORG_FUNDACION, email: 'pedro@familiasprimero.cl', status: 'activo', passwordHash: DEMO_PWD },
+  { id: 'u-tutor2', name: 'Lucía Tutora', role: 'tutor', orgId: ORG_FUNDACION, email: 'lucia@familiasprimero.cl', status: 'activo', passwordHash: DEMO_PWD },
+  { id: 'u-tutor3', name: 'Diego Tutor', role: 'tutor', orgId: ORG_FUNDACION, email: 'diego@familiasprimero.cl', status: 'activo', passwordHash: DEMO_PWD },
   // Staff de la municipalidad
-  { id: 'u-admin-muni', name: 'Admin La Pintana', role: 'admin', orgId: ORG_MUNI, email: 'admin@lapintana.cl' },
-  { id: 'u-tutor-muni', name: 'Rodrigo Tutor', role: 'tutor', orgId: ORG_MUNI, email: 'rodrigo@lapintana.cl' },
+  { id: 'u-admin-muni', name: 'Admin La Pintana', role: 'admin', orgId: ORG_MUNI, email: 'admin@lapintana.cl', status: 'activo', passwordHash: DEMO_PWD },
+  { id: 'u-tutor-muni', name: 'Rodrigo Tutor', role: 'tutor', orgId: ORG_MUNI, email: 'rodrigo@lapintana.cl', status: 'activo', passwordHash: DEMO_PWD },
+  // Usuario INVITADO para demostrar el primer ingreso (enrolamiento): nuevo@familiasprimero.cl
+  { id: 'u-invitado', name: '', role: 'tutor', orgId: ORG_FUNDACION, email: 'nuevo@familiasprimero.cl', status: 'invitado' },
 ];
 
 // --- Versiones por organización (sin fechas propias) ---
