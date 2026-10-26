@@ -101,6 +101,8 @@ interface AppStoreValue {
   inviteUser: (orgId: string | null, email: string, role: StaffRole) => User | { error: string };
   /** Cambia el rol de un usuario (superusuario). */
   changeUserRole: (userId: string, role: StaffRole) => void;
+  /** Cambia el correo de un usuario (valida que no esté en uso). */
+  setUserEmail: (userId: string, email: string) => { ok: true } | { error: string };
   /** Quita un usuario del equipo (y sus asignaciones de zona). */
   removeUser: (userId: string) => void;
   /** Reenvía la invitación (simbólico en la demo: deja al usuario como 'invitado'). */
@@ -358,6 +360,21 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const setUserEmail: AppStoreValue['setUserEmail'] = useCallback(
+    (userId, email) => {
+      const e = email.trim().toLowerCase();
+      if (state.users.some((u) => u.id !== userId && u.email.trim().toLowerCase() === e)) {
+        return { error: 'Ya existe un usuario con ese correo.' };
+      }
+      setState((prev) => ({
+        ...prev,
+        users: prev.users.map((u) => (u.id === userId ? { ...u, email: email.trim() } : u)),
+      }));
+      return { ok: true };
+    },
+    [state.users]
+  );
+
   const removeUser = useCallback((userId: string) => {
     setState((prev) => ({
       ...prev,
@@ -580,6 +597,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       getUserByEmail,
       inviteUser,
       changeUserRole,
+      setUserEmail,
       removeUser,
       resendInvite,
       completeEnrollment,
@@ -622,6 +640,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       getUserByEmail,
       inviteUser,
       changeUserRole,
+      setUserEmail,
       removeUser,
       resendInvite,
       completeEnrollment,
