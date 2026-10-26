@@ -37,7 +37,7 @@ export function RoleHeader() {
           <Text style={styles.name}>{name}</Text>
         </View>
         <Pressable onPress={handleSwitch} hitSlop={10}>
-          <Text style={styles.switch}>Cambiar</Text>
+          <Text style={styles.switch}>Cerrar sesión</Text>
         </Pressable>
       </View>
 
