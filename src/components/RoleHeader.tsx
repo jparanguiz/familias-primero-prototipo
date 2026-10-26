@@ -11,26 +11,45 @@ import { colors, fonts, fontSize, radius, spacing } from '@/theme';
 /** Encabezado con identidad, organización activa y acciones de sesión. */
 export function RoleHeader() {
   const router = useRouter();
-  const { session, signOut, setActiveOrgId } = useSession();
+  const { session, signOut, setActiveOrgId, stopImpersonating } = useSession();
   const { getUser, getOrg, orgs } = useAppStore();
   const orgId = useActiveOrgId();
   const [orgOpen, setOrgOpen] = useState(false);
 
   if (!session) return <FakeStatusBar />;
 
+  const impersonating = Boolean(session.impersonatorSession);
   const user = session.userId ? getUser(session.userId) : undefined;
   const name = user?.name ?? ROLE_LABELS[session.role];
   const org = orgId ? getOrg(orgId) : undefined;
-  const isSuper = session.role === 'superusuario';
+  // Mientras se impersona, el org chip no debe editarse como superusuario.
+  const isSuper = session.role === 'superusuario' && !impersonating;
 
   const handleSwitch = () => {
     signOut();
     router.replace('/login');
   };
 
+  const handleBackToSuper = () => {
+    stopImpersonating();
+    router.replace('/');
+  };
+
   return (
     <View>
       <FakeStatusBar />
+
+      {impersonating ? (
+        <View style={styles.impersonateBar}>
+          <Text style={styles.impersonateText} numberOfLines={1}>
+            Viendo como {name}
+          </Text>
+          <Pressable onPress={handleBackToSuper} hitSlop={8}>
+            <Text style={styles.impersonateBack}>Volver a mi sesión</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
           <Text style={styles.role}>{ROLE_LABELS[session.role]}</Text>
@@ -86,6 +105,19 @@ export function RoleHeader() {
 }
 
 const styles = StyleSheet.create({
+  impersonateBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.amberBg,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  impersonateText: { flex: 1, fontFamily: fonts.medium, fontSize: fontSize.caption, color: colors.amber },
+  impersonateBack: { fontFamily: fonts.semibold, fontSize: fontSize.caption, color: colors.amber, marginLeft: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs, marginBottom: spacing.sm },
   role: { fontFamily: fonts.regular, fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
   name: { fontFamily: fonts.semibold, fontSize: fontSize.subtitle, color: colors.textPrimary },
