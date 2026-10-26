@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Screen, ScreenHeader } from '@/components/Screen';
 import { Button } from '@/components/Button';
@@ -28,21 +28,33 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export default function Organizaciones() {
   const { orgs, usersInOrg, users, createOrganization, setLicenseStatus, inviteUser, changeUserRole } = useAppStore();
 
+  const [msg, setMsg] = useState<string | null>(null);
+
+  // --- Modal "Nueva organización" ---
+  const [orgModalOpen, setOrgModalOpen] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState<OrgType>('municipalidad');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [msg, setMsg] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Habilitar usuario (cualquier rol) por organización.
-  const [newOrgId, setNewOrgId] = useState<string | null>(null);
-  const [newRole, setNewRole] = useState<StaffRole>('admin');
-  const [newEmail, setNewEmail] = useState('');
+  const resetOrgForm = () => {
+    setName(''); setType('municipalidad'); setStart(''); setEnd(''); setAdminEmail(''); setFormError(null);
+  };
 
-  const canCreateOrg = name.trim().length >= 3 && DATE_RE.test(start);
+  const canCreateOrg =
+    name.trim().length >= 3 &&
+    DATE_RE.test(start) &&
+    (adminEmail.trim() === '' || isValidEmail(adminEmail));
+
   const handleCreateOrg = () => {
-    if (!canCreateOrg) {
-      setMsg('Ingresa nombre y fecha de inicio de licencia (AAAA-MM-DD).');
+    if (name.trim().length < 3 || !DATE_RE.test(start)) {
+      setFormError('Ingresa nombre y fecha de inicio de licencia (AAAA-MM-DD).');
+      return;
+    }
+    if (adminEmail.trim() !== '' && !isValidEmail(adminEmail)) {
+      setFormError('El correo del administrador no es válido.');
       return;
     }
     const org = createOrganization(name.trim(), type, {
@@ -50,11 +62,21 @@ export default function Organizaciones() {
       startDate: start,
       endDate: DATE_RE.test(end) ? end : undefined,
     });
-    setMsg(`Organización creada: ${org.name} (licencia activa).`);
-    setName(''); setStart(''); setEnd('');
+    let extra = '';
+    if (adminEmail.trim() !== '') {
+      const res = inviteUser(org.id, adminEmail.trim(), 'admin');
+      extra = 'error' in res ? ` (ojo: ${res.error})` : ` · administrador habilitado: ${res.email}`;
+    }
+    setMsg(`Organización creada: ${org.name}${extra}.`);
+    resetOrgForm();
+    setOrgModalOpen(false);
   };
 
-  // El superusuario no tiene organización; para otros roles se exige org.
+  // --- Habilitar usuario suelto (cualquier rol) ---
+  const [newOrgId, setNewOrgId] = useState<string | null>(null);
+  const [newRole, setNewRole] = useState<StaffRole>('admin');
+  const [newEmail, setNewEmail] = useState('');
+
   const needsOrgForNewUser = newRole !== 'superusuario';
   const canInvite = isValidEmail(newEmail) && (!needsOrgForNewUser || !!newOrgId);
   const handleInvite = () => {
@@ -76,7 +98,13 @@ export default function Organizaciones() {
 
       {msg ? <Banner tone="success" text={msg} /> : null}
 
-      <Text style={styles.sectionLabel}>Organizaciones</Text>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionLabel}>Organizaciones</Text>
+        <Pressable onPress={() => { resetOrgForm(); setOrgModalOpen(true); }} hitSlop={8}>
+          <Text style={styles.addLink}>+ Agregar</Text>
+        </Pressable>
+      </View>
+
       {orgs.map((o) => {
         const admins = usersInOrg(o.id).filter((u) => u.role === 'admin');
         const suspended = o.license.status === 'suspendida';
@@ -89,7 +117,9 @@ export default function Organizaciones() {
               </Text>
             </View>
             <Text style={styles.oMeta}>{o.type} · desde {formatDate(o.license.startDate)}{o.license.endDate ? ` hasta ${formatDate(o.license.endDate)}` : ''}</Text>
-            <Text style={styles.oMeta}>{admins.length ? `Admins: ${admins.map((a) => a.name).join(', ')}` : 'Sin administradores'}</Text>
+            <Text style={styles.oMeta}>
+              {admins.length ? `Admins: ${admins.map((a) => a.name || a.email).join(', ')}` : 'Sin administradores'}
+            </Text>
             <Pressable onPress={() => setLicenseStatus(o.id, suspended ? 'activa' : 'suspendida')}>
               <Text style={[styles.action, { color: suspended ? colors.green : colors.red }]}>
                 {suspended ? 'Reactivar licencia' : 'Suspender licencia'}
@@ -99,22 +129,15 @@ export default function Organizaciones() {
         );
       })}
 
-      <Text style={styles.sectionLabel}>Nueva organización (licencia)</Text>
-      <Field label="Nombre" value={name} onChangeText={setName} placeholder="Municipalidad de Peñalolén" autoCapitalize="words" />
-      <Select label="Tipo" value={type} onChange={(v) => setType(v as OrgType)} options={TYPES} searchable={false} />
-      <Field label="Inicio de licencia (AAAA-MM-DD)" value={start} onChangeText={setStart} placeholder="2027-01-01" autoCapitalize="none" />
-      <Field label="Fin de licencia (opcional)" value={end} onChangeText={setEnd} placeholder="2027-12-31" autoCapitalize="none" />
-      <Button label="Crear organización" onPress={handleCreateOrg} disabled={!canCreateOrg} />
+      <Button
+        label="Agregar organización"
+        onPress={() => { resetOrgForm(); setOrgModalOpen(true); }}
+        style={{ marginTop: spacing.sm }}
+      />
 
       <Text style={styles.sectionLabel}>Habilitar usuario</Text>
       <Banner tone="neutral" text="Habilitas el correo con un rol. La persona crea su nombre, clave y selfie en su primer ingreso." />
-      <Select
-        label="Rol"
-        value={newRole}
-        onChange={(v) => setNewRole(v as StaffRole)}
-        options={ROLES}
-        searchable={false}
-      />
+      <Select label="Rol" value={newRole} onChange={(v) => setNewRole(v as StaffRole)} options={ROLES} searchable={false} />
       {needsOrgForNewUser ? (
         <Select
           label="Organización"
@@ -146,11 +169,49 @@ export default function Organizaciones() {
           />
         </View>
       ))}
+
+      {/* Modal nueva organización */}
+      <Modal visible={orgModalOpen} animationType="slide" transparent onRequestClose={() => setOrgModalOpen(false)}>
+        <View style={styles.backdrop}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Nueva organización</Text>
+              <Pressable onPress={() => setOrgModalOpen(false)} hitSlop={8}>
+                <Text style={styles.close}>Cancelar</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: spacing.lg }} keyboardShouldPersistTaps="handled">
+              <Field label="Nombre" value={name} onChangeText={setName} placeholder="Municipalidad de Peñalolén" autoCapitalize="words" />
+              <Select label="Tipo" value={type} onChange={(v) => setType(v as OrgType)} options={TYPES} searchable={false} />
+              <Field label="Inicio de licencia (AAAA-MM-DD)" value={start} onChangeText={setStart} placeholder="2027-01-01" autoCapitalize="none" />
+              <Field label="Fin de licencia (opcional)" value={end} onChangeText={setEnd} placeholder="2027-12-31" autoCapitalize="none" />
+              <Field
+                label="Correo del administrador (opcional)"
+                value={adminEmail}
+                onChangeText={setAdminEmail}
+                placeholder="admin@organizacion.cl"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                hint="Si lo indicas, queda habilitado como administrador de esta organización."
+              />
+              {formError ? <Banner tone="error" text={formError} /> : null}
+              <Button label="Crear organización" onPress={handleCreateOrg} disabled={!canCreateOrg} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
   sectionLabel: {
     fontFamily: fonts.medium,
     fontSize: fontSize.caption,
@@ -160,6 +221,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
+  addLink: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.blue },
   card: { borderWidth: 1, borderColor: colors.borderSoft, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   oName: { fontFamily: fonts.medium, fontSize: fontSize.body, color: colors.textPrimary, flex: 1 },
@@ -168,4 +230,15 @@ const styles = StyleSheet.create({
   badgeOff: { backgroundColor: colors.redBg, color: colors.red },
   oMeta: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textSecondary, marginTop: 2 },
   action: { fontFamily: fonts.medium, fontSize: fontSize.small, marginTop: spacing.sm },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    padding: spacing.xl,
+    maxHeight: '88%',
+  },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  sheetTitle: { fontFamily: fonts.medium, fontSize: fontSize.subtitle, color: colors.textPrimary },
+  close: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.blue },
 });
