@@ -7,8 +7,9 @@ import { Field } from '@/components/Field';
 import { Banner } from '@/components/Banner';
 import { Select } from '@/components/Select';
 import { useAppStore } from '@/store/AppStore';
-import { OrgType } from '@/domain/types';
+import { OrgType, StaffRole } from '@/domain/types';
 import { formatDate } from '@/domain/format';
+import { isValidEmail } from '@/domain/auth';
 import { colors, fonts, fontSize, radius, spacing } from '@/theme';
 
 const TYPES: { value: OrgType; label: string }[] = [
@@ -16,10 +17,16 @@ const TYPES: { value: OrgType; label: string }[] = [
   { value: 'municipalidad', label: 'Municipalidad' },
   { value: 'institucion', label: 'Institución' },
 ];
+const ROLES: { value: StaffRole; label: string }[] = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'coordinador', label: 'Coordinador' },
+  { value: 'tutor', label: 'Tutor' },
+  { value: 'superusuario', label: 'Superusuario' },
+];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function Organizaciones() {
-  const { orgs, usersInOrg, createOrganization, setLicenseStatus, createUser } = useAppStore();
+  const { orgs, usersInOrg, users, createOrganization, setLicenseStatus, inviteUser, changeUserRole } = useAppStore();
 
   const [name, setName] = useState('');
   const [type, setType] = useState<OrgType>('municipalidad');
@@ -27,10 +34,10 @@ export default function Organizaciones() {
   const [end, setEnd] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
 
-  // Alta de administrador por organización.
-  const [adminOrgId, setAdminOrgId] = useState<string | null>(null);
-  const [adminName, setAdminName] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
+  // Habilitar usuario (cualquier rol) por organización.
+  const [newOrgId, setNewOrgId] = useState<string | null>(null);
+  const [newRole, setNewRole] = useState<StaffRole>('admin');
+  const [newEmail, setNewEmail] = useState('');
 
   const canCreateOrg = name.trim().length >= 3 && DATE_RE.test(start);
   const handleCreateOrg = () => {
@@ -47,16 +54,21 @@ export default function Organizaciones() {
     setName(''); setStart(''); setEnd('');
   };
 
-  const canCreateAdmin = adminOrgId && adminName.trim().length >= 3;
-  const handleCreateAdmin = () => {
-    if (!canCreateAdmin || !adminOrgId) {
-      setMsg('Elige una organización y el nombre del administrador.');
+  // El superusuario no tiene organización; para otros roles se exige org.
+  const needsOrgForNewUser = newRole !== 'superusuario';
+  const canInvite = isValidEmail(newEmail) && (!needsOrgForNewUser || !!newOrgId);
+  const handleInvite = () => {
+    if (!canInvite) {
+      setMsg('Ingresa un correo válido y, salvo superusuario, la organización.');
       return;
     }
-    const u = createUser(adminOrgId, adminName.trim(), 'admin', adminEmail.trim() || undefined);
-    setMsg(`Administrador creado: ${u.name}.`);
-    setAdminName(''); setAdminEmail('');
+    const res = inviteUser(needsOrgForNewUser ? newOrgId : null, newEmail.trim(), newRole);
+    if ('error' in res) { setMsg(res.error); return; }
+    setMsg(`Usuario habilitado: ${res.email}. Creará su cuenta en su primer ingreso.`);
+    setNewEmail('');
   };
+
+  const staffList = users.filter((u) => u.role !== 'superusuario');
 
   return (
     <Screen>
@@ -94,17 +106,46 @@ export default function Organizaciones() {
       <Field label="Fin de licencia (opcional)" value={end} onChangeText={setEnd} placeholder="2027-12-31" autoCapitalize="none" />
       <Button label="Crear organización" onPress={handleCreateOrg} disabled={!canCreateOrg} />
 
-      <Text style={styles.sectionLabel}>Crear administrador</Text>
+      <Text style={styles.sectionLabel}>Habilitar usuario</Text>
+      <Banner tone="neutral" text="Habilitas el correo con un rol. La persona crea su nombre, clave y selfie en su primer ingreso." />
       <Select
-        label="Organización"
-        placeholder="Elige la organización"
-        value={adminOrgId}
-        onChange={setAdminOrgId}
-        options={orgs.map((o) => ({ value: o.id, label: o.name, sublabel: o.type }))}
+        label="Rol"
+        value={newRole}
+        onChange={(v) => setNewRole(v as StaffRole)}
+        options={ROLES}
+        searchable={false}
       />
-      <Field label="Nombre del administrador" value={adminName} onChangeText={setAdminName} placeholder="Admin Peñalolén" autoCapitalize="words" />
-      <Field label="Correo (opcional)" value={adminEmail} onChangeText={setAdminEmail} placeholder="admin@muni.cl" keyboardType="email-address" autoCapitalize="none" />
-      <Button label="Crear administrador" onPress={handleCreateAdmin} disabled={!canCreateAdmin} />
+      {needsOrgForNewUser ? (
+        <Select
+          label="Organización"
+          placeholder="Elige la organización"
+          value={newOrgId}
+          onChange={setNewOrgId}
+          options={orgs.map((o) => ({ value: o.id, label: o.name, sublabel: o.type }))}
+        />
+      ) : null}
+      <Field label="Correo" value={newEmail} onChangeText={setNewEmail} placeholder="persona@organizacion.cl" keyboardType="email-address" autoCapitalize="none" />
+      <Button label="Habilitar usuario" onPress={handleInvite} disabled={!canInvite} />
+
+      <Text style={styles.sectionLabel}>Cambiar rol de un usuario</Text>
+      {staffList.map((u) => (
+        <View key={u.id} style={styles.card}>
+          <View style={styles.cardTop}>
+            <Text style={styles.oName}>{u.name || u.email}</Text>
+            <Text style={styles.oMeta}>{u.status === 'invitado' ? 'invitado' : 'activo'}</Text>
+          </View>
+          <Text style={styles.oMeta}>
+            {u.email} · {orgs.find((o) => o.id === u.orgId)?.name ?? 'Sin organización'}
+          </Text>
+          <Select
+            label="Rol"
+            value={u.role}
+            onChange={(v) => { changeUserRole(u.id, v as StaffRole); setMsg(`Rol actualizado para ${u.name || u.email}.`); }}
+            options={ROLES}
+            searchable={false}
+          />
+        </View>
+      ))}
     </Screen>
   );
 }

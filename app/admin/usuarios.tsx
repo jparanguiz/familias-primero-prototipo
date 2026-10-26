@@ -10,6 +10,7 @@ import { useAppStore } from '@/store/AppStore';
 import { useActiveOrgId } from '@/store/useScope';
 import { User } from '@/domain/types';
 import { versionLabel } from '@/domain/retention';
+import { isValidEmail } from '@/domain/auth';
 import { downloadUsersTemplate, normalizeRole, pick, pickAndParse } from '@/domain/bulkImport';
 import { colors, fonts, fontSize, radius, spacing } from '@/theme';
 
@@ -17,7 +18,7 @@ type StaffRole = User['role'];
 
 export default function AdminUsuarios() {
   const {
-    createUser,
+    inviteUser,
     versionsInOrg,
     usersInOrg,
     zonesInVersion,
@@ -31,21 +32,24 @@ export default function AdminUsuarios() {
   const users = orgId ? usersInOrg(orgId) : [];
 
   const [versionId, setVersionId] = useState<string | null>(versions[0]?.id ?? null);
-  const [name, setName] = useState('');
   const [role, setRole] = useState<StaffRole>('tutor');
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
 
-  const canCreate = name.trim().length >= 3;
+  const canCreate = isValidEmail(email);
   const handleCreate = () => {
     if (!canCreate) {
-      setMsg('Ingresa el nombre del usuario.');
+      setMsg('Ingresa un correo válido.');
       return;
     }
     if (!orgId) return;
-    const u = createUser(orgId, name.trim(), role, email.trim() || undefined);
-    setMsg(`Usuario creado: ${u.name}. Asígnale zonas en la versión.`);
-    setName(''); setEmail('');
+    const res = inviteUser(orgId, email.trim(), role);
+    if ('error' in res) {
+      setMsg(res.error);
+      return;
+    }
+    setMsg(`Invitación habilitada para ${res.email}. La persona crea su cuenta en su primer ingreso.`);
+    setEmail('');
   };
 
   const handleBulk = async () => {
@@ -55,13 +59,13 @@ export default function AdminUsuarios() {
       if (!orgId) return;
       let created = 0;
       file.rows.forEach((row) => {
-        const un = pick(row, 'nombre', 'name');
+        const mail = pick(row, 'email', 'correo');
         const r = normalizeRole(pick(row, 'rol', 'role'));
-        if (!un || !r) return;
-        createUser(orgId, un, r, pick(row, 'email', 'correo') || undefined);
-        created += 1;
+        if (!mail || !r || !isValidEmail(mail)) return;
+        const res = inviteUser(orgId, mail, r);
+        if (!('error' in res)) created += 1;
       });
-      setMsg(`Carga masiva: ${created} usuarios creados desde ${file.name}.`);
+      setMsg(`Carga masiva: ${created} usuarios habilitados desde ${file.name}.`);
     } catch {
       setMsg('No se pudo leer el archivo. Revisa el formato.');
     }
@@ -107,8 +111,11 @@ export default function AdminUsuarios() {
           <View key={u.id} style={styles.card}>
             <View style={styles.cardTop}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.uName}>{u.name}</Text>
-                {u.email ? <Text style={styles.uMeta}>{u.email}</Text> : null}
+                <Text style={styles.uName}>{u.name || u.email}</Text>
+                <Text style={styles.uMeta}>
+                  {u.email}
+                  {u.status === 'invitado' ? ' · invitado (aún no ingresa)' : ''}
+                </Text>
               </View>
               <Text style={styles.uRole}>{u.role === 'tutor' ? 'Tutor' : 'Coordinador'}</Text>
             </View>
@@ -124,8 +131,9 @@ export default function AdminUsuarios() {
         );
       })}
 
-      <Text style={styles.sectionLabel}>Crear usuario</Text>
-      <Field label="Nombre completo" value={name} onChangeText={setName} placeholder="Pedro Tutor" autoCapitalize="words" />
+      <Text style={styles.sectionLabel}>Habilitar usuario</Text>
+      <Banner tone="neutral" text="Habilitas el correo con un rol. La persona crea su nombre, clave y selfie en su primer ingreso." />
+      <Field label="Correo" value={email} onChangeText={setEmail} placeholder="persona@organizacion.cl" keyboardType="email-address" autoCapitalize="none" />
       <Select
         label="Rol"
         value={role}
@@ -133,8 +141,7 @@ export default function AdminUsuarios() {
         options={[{ value: 'tutor', label: 'Tutor' }, { value: 'coordinador', label: 'Coordinador' }]}
         searchable={false}
       />
-      <Field label="Correo (opcional)" value={email} onChangeText={setEmail} placeholder="pedro@fundacion.cl" keyboardType="email-address" autoCapitalize="none" />
-      <Button label="Crear usuario" onPress={handleCreate} disabled={!canCreate} />
+      <Button label="Habilitar usuario" onPress={handleCreate} disabled={!canCreate} />
 
       <Text style={styles.sectionLabel}>Carga masiva</Text>
       <View style={{ gap: spacing.sm }}>

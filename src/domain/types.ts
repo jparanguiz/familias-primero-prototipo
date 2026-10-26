@@ -46,14 +46,26 @@ export type Role = 'superusuario' | 'admin' | 'coordinador' | 'tutor' | 'apodera
 /** Roles del staff que viven en el store (tienen organización, salvo superusuario). */
 export type StaffRole = 'superusuario' | 'admin' | 'coordinador' | 'tutor';
 
+/** Estado de un usuario del staff. */
+export type UserStatus = 'invitado' | 'activo';
+
 export interface User {
   id: string;
   name: string;
   role: StaffRole;
   /** Organización a la que pertenece. El superusuario no está atado a una (null). */
   orgId: string | null;
-  /** Correo de contacto (para carga masiva / identificación). */
-  email?: string;
+  /** Correo: es la identidad de login. */
+  email: string;
+  /**
+   * 'invitado' = el superusuario habilitó el correo con un rol, pero la persona
+   * aún no se enrola (primer ingreso). 'activo' = ya completó su enrolamiento.
+   */
+  status: UserStatus;
+  /** Clave (hash simulado). Indefinida mientras no cree su clave. OJO: demo, no seguro. */
+  passwordHash?: string;
+  /** Selfie del usuario (id simulado), capturada en el primer ingreso. */
+  selfiePhotoId?: string;
 }
 
 // ---------------------------------------------------------------------------

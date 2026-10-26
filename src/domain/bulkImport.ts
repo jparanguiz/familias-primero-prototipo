@@ -96,7 +96,8 @@ export async function downloadZonesTemplate(): Promise<void> {
 }
 
 export async function downloadUsersTemplate(): Promise<void> {
-  const csv = ['nombre,rol,email', 'Pedro Tutor,tutor,pedro@fundacion.cl', 'Carla Coord,coordinador,carla@fundacion.cl'].join('\n');
+  // El nombre lo completa la persona en su primer ingreso; aquí solo correo + rol.
+  const csv = ['email,rol', 'pedro@fundacion.cl,tutor', 'carla@fundacion.cl,coordinador'].join('\n');
   await exportCsv('plantilla_usuarios.csv', csv);
 }
 
