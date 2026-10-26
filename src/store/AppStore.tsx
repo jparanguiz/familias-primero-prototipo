@@ -103,6 +103,10 @@ interface AppStoreValue {
   changeUserRole: (userId: string, role: StaffRole) => void;
   /** Cambia el correo de un usuario (valida que no esté en uso). */
   setUserEmail: (userId: string, email: string) => { ok: true } | { error: string };
+  /** Cambia el nombre de un usuario. */
+  setUserName: (userId: string, name: string) => void;
+  /** Cambia la selfie de un usuario. */
+  setUserSelfie: (userId: string, selfiePhotoId: string) => void;
   /** Quita un usuario del equipo (y sus asignaciones de zona). */
   removeUser: (userId: string) => void;
   /** Reenvía la invitación (simbólico en la demo: deja al usuario como 'invitado'). */
@@ -375,6 +379,20 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [state.users]
   );
 
+  const setUserName = useCallback((userId: string, name: string) => {
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) => (u.id === userId ? { ...u, name } : u)),
+    }));
+  }, []);
+
+  const setUserSelfie = useCallback((userId: string, selfiePhotoId: string) => {
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) => (u.id === userId ? { ...u, selfiePhotoId } : u)),
+    }));
+  }, []);
+
   const removeUser = useCallback((userId: string) => {
     setState((prev) => ({
       ...prev,
@@ -598,6 +616,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       inviteUser,
       changeUserRole,
       setUserEmail,
+      setUserName,
+      setUserSelfie,
       removeUser,
       resendInvite,
       completeEnrollment,
@@ -641,6 +661,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       inviteUser,
       changeUserRole,
       setUserEmail,
+      setUserName,
+      setUserSelfie,
       removeUser,
       resendInvite,
       completeEnrollment,
