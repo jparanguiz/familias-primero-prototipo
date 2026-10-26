@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { Screen, ScreenHeader } from '@/components/Screen';
 import { Button } from '@/components/Button';
@@ -7,7 +8,7 @@ import { Field } from '@/components/Field';
 import { Banner } from '@/components/Banner';
 import { Select } from '@/components/Select';
 import { useAppStore } from '@/store/AppStore';
-import { OrgType, StaffRole } from '@/domain/types';
+import { OrgType } from '@/domain/types';
 import { formatDate } from '@/domain/format';
 import { isValidEmail } from '@/domain/auth';
 import { colors, fonts, fontSize, radius, spacing } from '@/theme';
@@ -17,16 +18,11 @@ const TYPES: { value: OrgType; label: string }[] = [
   { value: 'municipalidad', label: 'Municipalidad' },
   { value: 'institucion', label: 'Institución' },
 ];
-const ROLES: { value: StaffRole; label: string }[] = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'coordinador', label: 'Coordinador' },
-  { value: 'tutor', label: 'Tutor' },
-  { value: 'superusuario', label: 'Superusuario' },
-];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function Organizaciones() {
-  const { orgs, usersInOrg, users, createOrganization, setLicenseStatus, inviteUser, changeUserRole } = useAppStore();
+  const router = useRouter();
+  const { orgs, usersInOrg, createOrganization, inviteUser } = useAppStore();
 
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -72,25 +68,7 @@ export default function Organizaciones() {
     setOrgModalOpen(false);
   };
 
-  // --- Habilitar usuario suelto (cualquier rol) ---
-  const [newOrgId, setNewOrgId] = useState<string | null>(null);
-  const [newRole, setNewRole] = useState<StaffRole>('admin');
-  const [newEmail, setNewEmail] = useState('');
-
-  const needsOrgForNewUser = newRole !== 'superusuario';
-  const canInvite = isValidEmail(newEmail) && (!needsOrgForNewUser || !!newOrgId);
-  const handleInvite = () => {
-    if (!canInvite) {
-      setMsg('Ingresa un correo válido y, salvo superusuario, la organización.');
-      return;
-    }
-    const res = inviteUser(needsOrgForNewUser ? newOrgId : null, newEmail.trim(), newRole);
-    if ('error' in res) { setMsg(res.error); return; }
-    setMsg(`Usuario habilitado: ${res.email}. Creará su cuenta en su primer ingreso.`);
-    setNewEmail('');
-  };
-
-  const staffList = users.filter((u) => u.role !== 'superusuario');
+  const openModal = () => { resetOrgForm(); setOrgModalOpen(true); };
 
   return (
     <Screen>
@@ -100,75 +78,44 @@ export default function Organizaciones() {
 
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionLabel}>Organizaciones</Text>
-        <Pressable onPress={() => { resetOrgForm(); setOrgModalOpen(true); }} hitSlop={8}>
+        <Pressable onPress={openModal} hitSlop={8}>
           <Text style={styles.addLink}>+ Agregar</Text>
         </Pressable>
       </View>
 
+      <Banner tone="neutral" text="Toca una organización para gestionar sus usuarios y su licencia." />
+
       {orgs.map((o) => {
         const admins = usersInOrg(o.id).filter((u) => u.role === 'admin');
+        const total = usersInOrg(o.id).length;
         const suspended = o.license.status === 'suspendida';
         return (
-          <View key={o.id} style={styles.card}>
+          <Pressable
+            key={o.id}
+            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            onPress={() => router.push(`/super/organizacion/${o.id}`)}
+          >
             <View style={styles.cardTop}>
               <Text style={styles.oName}>{o.name}</Text>
               <Text style={[styles.badge, suspended ? styles.badgeOff : styles.badgeOn]}>
                 {suspended ? 'Suspendida' : 'Activa'}
               </Text>
             </View>
-            <Text style={styles.oMeta}>{o.type} · desde {formatDate(o.license.startDate)}{o.license.endDate ? ` hasta ${formatDate(o.license.endDate)}` : ''}</Text>
             <Text style={styles.oMeta}>
-              {admins.length ? `Admins: ${admins.map((a) => a.name || a.email).join(', ')}` : 'Sin administradores'}
+              {o.type} · desde {formatDate(o.license.startDate)}{o.license.endDate ? ` hasta ${formatDate(o.license.endDate)}` : ''}
             </Text>
-            <Pressable onPress={() => setLicenseStatus(o.id, suspended ? 'activa' : 'suspendida')}>
-              <Text style={[styles.action, { color: suspended ? colors.green : colors.red }]}>
-                {suspended ? 'Reactivar licencia' : 'Suspender licencia'}
+            <View style={styles.cardBottom}>
+              <Text style={styles.oMeta}>
+                {total} usuario{total === 1 ? '' : 's'}
+                {admins.length ? ` · Admin: ${admins.map((a) => a.name || a.email).join(', ')}` : ' · sin admin'}
               </Text>
-            </Pressable>
-          </View>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </Pressable>
         );
       })}
 
-      <Button
-        label="Agregar organización"
-        onPress={() => { resetOrgForm(); setOrgModalOpen(true); }}
-        style={{ marginTop: spacing.sm }}
-      />
-
-      <Text style={styles.sectionLabel}>Habilitar usuario</Text>
-      <Banner tone="neutral" text="Habilitas el correo con un rol. La persona crea su nombre, clave y selfie en su primer ingreso." />
-      <Select label="Rol" value={newRole} onChange={(v) => setNewRole(v as StaffRole)} options={ROLES} searchable={false} />
-      {needsOrgForNewUser ? (
-        <Select
-          label="Organización"
-          placeholder="Elige la organización"
-          value={newOrgId}
-          onChange={setNewOrgId}
-          options={orgs.map((o) => ({ value: o.id, label: o.name, sublabel: o.type }))}
-        />
-      ) : null}
-      <Field label="Correo" value={newEmail} onChangeText={setNewEmail} placeholder="persona@organizacion.cl" keyboardType="email-address" autoCapitalize="none" />
-      <Button label="Habilitar usuario" onPress={handleInvite} disabled={!canInvite} />
-
-      <Text style={styles.sectionLabel}>Cambiar rol de un usuario</Text>
-      {staffList.map((u) => (
-        <View key={u.id} style={styles.card}>
-          <View style={styles.cardTop}>
-            <Text style={styles.oName}>{u.name || u.email}</Text>
-            <Text style={styles.oMeta}>{u.status === 'invitado' ? 'invitado' : 'activo'}</Text>
-          </View>
-          <Text style={styles.oMeta}>
-            {u.email} · {orgs.find((o) => o.id === u.orgId)?.name ?? 'Sin organización'}
-          </Text>
-          <Select
-            label="Rol"
-            value={u.role}
-            onChange={(v) => { changeUserRole(u.id, v as StaffRole); setMsg(`Rol actualizado para ${u.name || u.email}.`); }}
-            options={ROLES}
-            searchable={false}
-          />
-        </View>
-      ))}
+      <Button label="Agregar organización" onPress={openModal} style={{ marginTop: spacing.sm }} />
 
       {/* Modal nueva organización */}
       <Modal visible={orgModalOpen} animationType="slide" transparent onRequestClose={() => setOrgModalOpen(false)}>
@@ -218,26 +165,20 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
   },
   addLink: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.blue },
   card: { borderWidth: 1, borderColor: colors.borderSoft, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md },
+  cardPressed: { backgroundColor: colors.surface },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   oName: { fontFamily: fonts.medium, fontSize: fontSize.body, color: colors.textPrimary, flex: 1 },
   badge: { fontFamily: fonts.medium, fontSize: 11, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.sm, overflow: 'hidden' },
   badgeOn: { backgroundColor: colors.greenBg, color: colors.green },
   badgeOff: { backgroundColor: colors.redBg, color: colors.red },
-  oMeta: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textSecondary, marginTop: 2 },
-  action: { fontFamily: fonts.medium, fontSize: fontSize.small, marginTop: spacing.sm },
+  oMeta: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textSecondary, marginTop: 2, flex: 1 },
+  chevron: { fontSize: 22, color: colors.textMuted, marginLeft: spacing.sm },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    padding: spacing.xl,
-    maxHeight: '88%',
-  },
+  sheet: { backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.xl, maxHeight: '88%' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   sheetTitle: { fontFamily: fonts.medium, fontSize: fontSize.subtitle, color: colors.textPrimary },
   close: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.blue },
