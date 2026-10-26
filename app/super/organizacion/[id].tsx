@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { Screen, ScreenHeader } from '@/components/Screen';
@@ -9,7 +9,7 @@ import { Banner } from '@/components/Banner';
 import { Select } from '@/components/Select';
 import { Card } from '@/components/Card';
 import { useAppStore } from '@/store/AppStore';
-import { StaffRole } from '@/domain/types';
+import { StaffRole, User } from '@/domain/types';
 import { formatDate } from '@/domain/format';
 import { isValidEmail } from '@/domain/auth';
 import { colors, fonts, fontSize, radius, spacing } from '@/theme';
@@ -26,7 +26,6 @@ const GROUPS: { role: StaffRole; title: string }[] = [
   { role: 'tutor', title: 'Tutores' },
 ];
 
-/** Confirmación multiplataforma. */
 function confirmAction(message: string, onConfirm: () => void) {
   if (Platform.OS === 'web') {
     // eslint-disable-next-line no-alert
@@ -47,15 +46,26 @@ export default function OrganizacionDetalle() {
     usersInOrg,
     inviteUser,
     changeUserRole,
+    setUserEmail,
     removeUser,
     resendInvite,
     setLicenseStatus,
   } = useAppStore();
 
   const org = getOrg(orgId);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  // Modal "Crear usuario"
+  const [createOpen, setCreateOpen] = useState(false);
   const [newRole, setNewRole] = useState<StaffRole>('tutor');
   const [newEmail, setNewEmail] = useState('');
-  const [msg, setMsg] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  // Modal "Editar usuario"
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editRole, setEditRole] = useState<StaffRole>('tutor');
+  const [editEmail, setEditEmail] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
 
   if (!org) {
     return (
@@ -69,13 +79,28 @@ export default function OrganizacionDetalle() {
   const members = usersInOrg(orgId);
   const suspended = org.license.status === 'suspendida';
 
-  const canInvite = isValidEmail(newEmail);
-  const handleInvite = () => {
-    if (!canInvite) { setMsg('Ingresa un correo válido.'); return; }
+  const openCreate = () => { setNewRole('tutor'); setNewEmail(''); setCreateError(null); setCreateOpen(true); };
+  const handleCreate = () => {
+    if (!isValidEmail(newEmail)) { setCreateError('Ingresa un correo válido.'); return; }
     const res = inviteUser(orgId, newEmail.trim(), newRole);
-    if ('error' in res) { setMsg(res.error); return; }
-    setMsg(`Usuario habilitado: ${res.email}. Creará su cuenta en su primer ingreso.`);
-    setNewEmail('');
+    if ('error' in res) { setCreateError(res.error); return; }
+    setMsg(`Usuario creado: ${res.email}. Creará su cuenta en su primer ingreso.`);
+    setCreateOpen(false);
+  };
+
+  const openEdit = (u: User) => {
+    setEditUser(u); setEditRole(u.role); setEditEmail(u.email); setEditError(null);
+  };
+  const saveEdit = () => {
+    if (!editUser) return;
+    if (!isValidEmail(editEmail)) { setEditError('Ingresa un correo válido.'); return; }
+    if (editEmail.trim().toLowerCase() !== editUser.email.toLowerCase()) {
+      const res = setUserEmail(editUser.id, editEmail.trim());
+      if ('error' in res) { setEditError(res.error); return; }
+    }
+    if (editRole !== editUser.role) changeUserRole(editUser.id, editRole);
+    setMsg(`Usuario actualizado: ${editEmail.trim()}.`);
+    setEditUser(null);
   };
 
   const toggleLicense = () => {
@@ -90,7 +115,7 @@ export default function OrganizacionDetalle() {
   };
 
   return (
-    <Screen>
+    <Screen footer={<Button label="Crear usuario" onPress={openCreate} />}>
       <ScreenHeader showBack backLabel="Organizaciones" title={org.name} subtitle="Usuarios y licencia" />
 
       {msg ? <Banner tone="success" text={msg} /> : null}
@@ -130,23 +155,9 @@ export default function OrganizacionDetalle() {
                     </Text>
                   </View>
                   <Text style={styles.uEmail}>{u.email}</Text>
-                  <Select
-                    label="Rol"
-                    value={u.role}
-                    onChange={(v) => { changeUserRole(u.id, v as StaffRole); setMsg(`Rol actualizado para ${u.name || u.email}.`); }}
-                    options={ROLES}
-                    searchable={false}
-                  />
-                  <View style={styles.userActions}>
-                    {u.status === 'activo' ? (
-                      <Pressable onPress={() => confirmAction(`¿Reenviar invitación a ${u.email}? Deberá crear su cuenta de nuevo.`, () => { resendInvite(u.id); setMsg('Invitación reenviada.'); })}>
-                        <Text style={styles.linkBlue}>Reenviar invitación</Text>
-                      </Pressable>
-                    ) : null}
-                    <Pressable onPress={() => confirmAction(`¿Quitar a ${u.name || u.email} de ${org.name}?`, () => { removeUser(u.id); setMsg('Usuario quitado.'); })}>
-                      <Text style={styles.linkRed}>Quitar</Text>
-                    </Pressable>
-                  </View>
+                  <Pressable onPress={() => openEdit(u)} style={styles.editBtn}>
+                    <Text style={styles.editText}>Editar</Text>
+                  </Pressable>
                 </View>
               ))
             )}
@@ -154,11 +165,63 @@ export default function OrganizacionDetalle() {
         );
       })}
 
-      <Text style={styles.sectionLabel}>Habilitar usuario</Text>
-      <Banner tone="neutral" text="Habilitas el correo con un rol. La persona crea su nombre, clave y selfie en su primer ingreso." />
-      <Select label="Rol" value={newRole} onChange={(v) => setNewRole(v as StaffRole)} options={ROLES} searchable={false} />
-      <Field label="Correo" value={newEmail} onChangeText={setNewEmail} placeholder="persona@organizacion.cl" keyboardType="email-address" autoCapitalize="none" />
-      <Button label="Habilitar usuario" onPress={handleInvite} disabled={!canInvite} />
+      {/* Modal crear usuario */}
+      <Modal visible={createOpen} animationType="slide" transparent onRequestClose={() => setCreateOpen(false)}>
+        <View style={styles.backdrop}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Crear usuario</Text>
+              <Pressable onPress={() => setCreateOpen(false)} hitSlop={8}><Text style={styles.close}>Cancelar</Text></Pressable>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Banner tone="neutral" text="Habilitas el correo con un rol. La persona crea su nombre, clave y selfie en su primer ingreso." />
+              <Select label="Rol" value={newRole} onChange={(v) => setNewRole(v as StaffRole)} options={ROLES} searchable={false} />
+              <Field label="Correo" value={newEmail} onChangeText={setNewEmail} placeholder="persona@organizacion.cl" keyboardType="email-address" autoCapitalize="none" />
+              {createError ? <Banner tone="error" text={createError} /> : null}
+              <Button label="Crear usuario" onPress={handleCreate} disabled={!isValidEmail(newEmail)} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal editar usuario */}
+      <Modal visible={!!editUser} animationType="slide" transparent onRequestClose={() => setEditUser(null)}>
+        <View style={styles.backdrop}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Editar usuario</Text>
+              <Pressable onPress={() => setEditUser(null)} hitSlop={8}><Text style={styles.close}>Cancelar</Text></Pressable>
+            </View>
+            {editUser ? (
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <Text style={styles.editName}>{editUser.name || '(aún no ingresa)'}</Text>
+                <Text style={styles.editStatus}>{editUser.status === 'invitado' ? 'Invitado' : 'Activo'}</Text>
+                <Field label="Correo" value={editEmail} onChangeText={setEditEmail} placeholder="persona@organizacion.cl" keyboardType="email-address" autoCapitalize="none" />
+                <Select label="Rol" value={editRole} onChange={(v) => setEditRole(v as StaffRole)} options={ROLES} searchable={false} />
+                {editError ? <Banner tone="error" text={editError} /> : null}
+                <Button label="Guardar cambios" onPress={saveEdit} />
+
+                <View style={styles.editActions}>
+                  {editUser.status === 'activo' ? (
+                    <Pressable onPress={() => {
+                      const u = editUser;
+                      confirmAction(`¿Reenviar invitación a ${u.email}? Deberá crear su cuenta de nuevo.`, () => { resendInvite(u.id); setMsg('Invitación reenviada.'); setEditUser(null); });
+                    }}>
+                      <Text style={styles.linkBlue}>Reenviar invitación</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable onPress={() => {
+                    const u = editUser;
+                    confirmAction(`¿Quitar a ${u.name || u.email} de ${org.name}?`, () => { removeUser(u.id); setMsg('Usuario quitado.'); setEditUser(null); });
+                  }}>
+                    <Text style={styles.linkRed}>Quitar de la organización</Text>
+                  </Pressable>
+                </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -183,11 +246,28 @@ const styles = StyleSheet.create({
   empty: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textMuted, marginBottom: spacing.sm },
   userCard: { borderWidth: 1, borderColor: colors.borderSoft, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md },
   uName: { fontFamily: fonts.medium, fontSize: fontSize.body, color: colors.textPrimary, flex: 1 },
-  uEmail: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.sm },
+  uEmail: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textSecondary, marginTop: 2 },
   statusTag: { fontFamily: fonts.medium, fontSize: 11, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.sm, overflow: 'hidden' },
   statusInv: { backgroundColor: colors.amberBg, color: colors.amber },
   statusAct: { backgroundColor: colors.greenBg, color: colors.green },
-  userActions: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.sm },
+  editBtn: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  editText: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.textPrimary },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.xl, maxHeight: '88%' },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  sheetTitle: { fontFamily: fonts.medium, fontSize: fontSize.subtitle, color: colors.textPrimary },
+  close: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.blue },
+  editName: { fontFamily: fonts.medium, fontSize: fontSize.body, color: colors.textPrimary },
+  editStatus: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textSecondary, marginBottom: spacing.md },
+  editActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.lg },
   linkBlue: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.blue },
   linkRed: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.red },
 });
