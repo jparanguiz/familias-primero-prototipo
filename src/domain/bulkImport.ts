@@ -88,11 +88,32 @@ export function pick(row: ParsedRow, ...keys: string[]): string {
 // ---- Plantillas descargables ----
 
 export async function downloadZonesTemplate(): Promise<void> {
+  // 'version' es opcional: si se indica (ej. "Verano 2027") y existe en la
+  // organización, la zona se suma además a esa versión. Si va vacía, solo
+  // queda en el catálogo.
   const csv = [
-    'nombre,direccion,tipo,contacto_nombre,contacto_telefono,contacto_email,contacto_cargo',
-    'Colegio Ejemplo,Av. Siempre Viva 100,Colegio,Ana Pérez,+56 9 0000 0000,ana@colegio.cl,Directora',
+    'nombre,direccion,tipo,contacto_nombre,contacto_telefono,contacto_email,contacto_cargo,version,inicio,fin',
+    'Colegio Ejemplo,Av. Siempre Viva 100,Colegio,Ana Pérez,+56 9 0000 0000,ana@colegio.cl,Directora,Verano 2027,2027-01-11,2027-01-22',
+    'Biblioteca Ejemplo,Calle 2,Biblioteca,Luis Díaz,+56 9 1111 1111,luis@bib.cl,Encargado,,,',
   ].join('\n');
   await exportCsv('plantilla_zonas.csv', csv);
+}
+
+/**
+ * Interpreta un texto de versión tipo "Verano 2027" / "invierno-2027".
+ * Devuelve { season, year } o null si no se reconoce.
+ */
+export function parseVersionText(
+  value: string
+): { season: 'Verano' | 'Invierno'; year: number } | null {
+  const v = normKey(value);
+  if (!v) return null;
+  const yearMatch = v.match(/\d{4}/);
+  if (!yearMatch) return null;
+  const year = parseInt(yearMatch[0], 10);
+  if (v.includes('verano')) return { season: 'Verano', year };
+  if (v.includes('invierno')) return { season: 'Invierno', year };
+  return null;
 }
 
 export async function downloadUsersTemplate(): Promise<void> {
