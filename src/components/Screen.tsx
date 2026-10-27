@@ -71,8 +71,9 @@ export function ScreenHeader({
   onBack,
   backLabel,
 }: ScreenHeaderProps) {
+  // Banda teal tenue consistente con el encabezado de los homes (RoleHeader).
   return (
-    <View style={styles.header}>
+    <View style={styles.headerBand}>
       <FakeStatusBar step={step} />
       {showBack ? <BackButton onBack={onBack} label={backLabel} /> : null}
       <Text style={styles.title}>{title}</Text>
@@ -162,20 +163,24 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
     color: colors.blue,
   },
-  header: {
+  headerBand: {
+    backgroundColor: colors.primaryBg,
+    // Sangra a los bordes del teléfono compensando el padding del body.
+    marginHorizontal: -spacing.xl,
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.lg,
+    marginBottom: spacing.lg,
   },
   title: {
     fontFamily: fonts.medium,
     fontSize: fontSize.title,
-    color: colors.textPrimary,
-    marginTop: spacing.lg,
+    color: colors.headerText,
+    marginTop: spacing.md,
   },
   subtitle: {
     fontFamily: fonts.regular,
     fontSize: fontSize.small,
-    color: colors.textSecondary,
+    color: colors.headerOrg,
     marginTop: spacing.xs,
   },
 });
