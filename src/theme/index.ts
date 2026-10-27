@@ -3,11 +3,17 @@
  * Colores y tipografía extraídos de los diseños Figma entregados (SVG 360x720).
  */
 
+/**
+ * Paleta de la Fundación Familias Primero, muestreada del sitio:
+ *  - Teal #49A2AD (header) → principal (botones).
+ *  - Violeta #8858E0 (logo) y vino #482860 (menú activo) → acentos.
+ * Fondo blanco; acentos atenuados para no saturar.
+ */
 export const colors = {
   // Superficies
   background: '#FFFFFF',
-  surface: '#F4F4F2',
-  borderSoft: '#D9D8D2',
+  surface: '#F4F3F0',
+  borderSoft: '#E4E3DF',
   border: '#B4B2A9',
 
   // Texto
@@ -16,24 +22,33 @@ export const colors = {
   textMuted: '#9A9892',
   textOnDark: '#FFFFFF',
 
-  // Primario (botón de acción)
-  primary: '#1F1F1E',
+  // Primario (botón de acción) = teal de la marca
+  primary: '#2F8F99',          // teal un poco más profundo para contraste con texto blanco
+  primaryBg: '#E7F4F5',        // teal muy claro para fondos suaves
 
-  // Acento azul (links, info)
-  blue: '#185FA5',
-  blueBg: '#E6F1FB',
+  // Acento teal (links, datos, info)
+  blue: '#2F7F88',             // mantiene el nombre "blue" por compatibilidad; ahora es teal oscuro
+  blueBg: '#E7F4F5',
 
-  // Éxito (verde)
+  // Acento violeta (acciones secundarias, destacados de marca)
+  violet: '#7A4AC2',
+  violetBg: '#EFE8FB',
+
+  // Vino (destacados / activo), tomado del menú del sitio
+  wine: '#482860',
+  wineBg: '#EEE8F0',
+
+  // Éxito (verde apagado)
   green: '#3B6D11',
-  greenBg: '#EAF3DE',
+  greenBg: '#E8F3E2',
 
-  // Error (rojo)
+  // Error (rojo apagado)
   red: '#A32D2D',
   redBg: '#F7E7E7',
 
-  // Advertencia (ámbar)
-  amber: '#854F0B',
-  amberBg: '#FAEEDA',
+  // Advertencia (ámbar apagado)
+  amber: '#8A5A12',
+  amberBg: '#FDEEDC',
 } as const;
 
 export const spacing = {
