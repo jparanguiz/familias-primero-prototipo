@@ -81,6 +81,8 @@ interface AppStoreValue {
 
   /** Versiones de una organización. */
   versionsInOrg: (orgId: string) => ProgramVersion[];
+  /** Busca una versión de la organización por temporada y año. */
+  findVersion: (orgId: string, season: Season, year: number) => ProgramVersion | undefined;
   /** Zonas (catálogo) de una organización. */
   zonesInOrg: (orgId: string) => Zone[];
   /** Usuarios de una organización. */
@@ -252,6 +254,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   const versionsInOrg = useCallback(
     (orgId: string) => state.versions.filter((v) => v.orgId === orgId),
+    [state.versions]
+  );
+  const findVersion = useCallback(
+    (orgId: string, season: Season, year: number) =>
+      state.versions.find((v) => v.orgId === orgId && v.season === season && v.year === year),
     [state.versions]
   );
   const zonesInOrg = useCallback((orgId: string) => state.zones.filter((z) => z.orgId === orgId), [state.zones]);
@@ -604,6 +611,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       getActiveConsent,
       getZoneAssignment,
       versionsInOrg,
+      findVersion,
       zonesInOrg,
       usersInOrg,
       zonesInVersion,
@@ -649,6 +657,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       getActiveConsent,
       getZoneAssignment,
       versionsInOrg,
+      findVersion,
       zonesInOrg,
       usersInOrg,
       zonesInVersion,
