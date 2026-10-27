@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Screen, FakeStatusBar } from '@/components/Screen';
@@ -56,7 +56,12 @@ export default function Login() {
     <Screen>
       <FakeStatusBar />
       <View style={styles.brand}>
-        <Text style={styles.foundation}>Fundación Familias Primero</Text>
+        <Image
+          source={require('../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="Logo Fundación Familias Primero"
+        />
         <Text style={styles.program}>Programa Leer es Poderoso</Text>
       </View>
 
@@ -111,9 +116,9 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  brand: { marginTop: spacing.lg, marginBottom: spacing.xl },
-  foundation: { fontFamily: fonts.semibold, fontSize: fontSize.title, color: colors.textPrimary },
-  program: { fontFamily: fonts.regular, fontSize: fontSize.small, color: colors.textSecondary, marginTop: spacing.xs },
+  brand: { marginTop: spacing.lg, marginBottom: spacing.xl, alignItems: 'center' },
+  logo: { width: 140, height: 126 },
+  program: { fontFamily: fonts.medium, fontSize: fontSize.body, color: colors.textSecondary, marginTop: spacing.sm },
   title: { fontFamily: fonts.medium, fontSize: fontSize.subtitle, color: colors.textPrimary, marginBottom: spacing.lg },
   linkWrap: { marginTop: spacing.md, alignItems: 'center' },
   link: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.blue },
