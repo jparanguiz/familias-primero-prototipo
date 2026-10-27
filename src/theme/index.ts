@@ -24,14 +24,22 @@ export const colors = {
 
   // Primario (botón de acción) = teal de la marca
   primary: '#2F8F99',          // teal un poco más profundo para contraste con texto blanco
-  primaryBg: '#E7F4F5',        // teal muy claro para fondos suaves
+  primaryBg: '#E7F4F5',        // teal muy claro para fondos suaves (banda del header, chips)
+  primaryDark: '#1F6B73',      // teal oscuro para títulos de tarjetas
+  primaryBorder: '#9ED0D2',    // borde teal claro (pastillas)
 
   // Acento teal (links, datos, info)
   blue: '#2F7F88',             // mantiene el nombre "blue" por compatibilidad; ahora es teal oscuro
   blueBg: '#E7F4F5',
 
+  // Texto sobre la banda teal del header
+  headerText: '#15343A',
+  headerRole: '#2F8F99',
+  headerOrg: '#3F7B80',
+
   // Acento violeta (acciones secundarias, destacados de marca)
   violet: '#7A4AC2',
+  violetDark: '#6A3FB0',       // violeta para títulos de sección 'Programa'
   violetBg: '#EFE8FB',
 
   // Vino (destacados / activo), tomado del menú del sitio

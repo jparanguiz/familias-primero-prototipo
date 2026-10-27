@@ -37,7 +37,32 @@ export function RoleHeader() {
 
   return (
     <View>
-      <FakeStatusBar />
+      {/* Banda de identidad con tono teal tenue (incluye la barra de estado) */}
+      <View style={styles.band}>
+        <FakeStatusBar />
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.role}>{ROLE_LABELS[session.role]}</Text>
+            <Text style={styles.name}>{name}</Text>
+            {org ? (
+              <Pressable
+                onPress={isSuper ? () => setOrgOpen(true) : undefined}
+                disabled={!isSuper}
+                hitSlop={6}
+              >
+                <Text style={styles.org}>
+                  {org.name}
+                  {org.license.status === 'suspendida' ? ' · licencia suspendida' : ''}
+                  {isSuper ? '  ▾' : ''}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <Pressable onPress={handleSwitch} hitSlop={10}>
+            <Text style={styles.switch}>Cerrar sesión</Text>
+          </Pressable>
+        </View>
+      </View>
 
       {impersonating ? (
         <View style={styles.impersonateBar}>
@@ -48,32 +73,6 @@ export function RoleHeader() {
             <Text style={styles.impersonateBack}>Volver a mi sesión</Text>
           </Pressable>
         </View>
-      ) : null}
-
-      <View style={styles.row}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.role}>{ROLE_LABELS[session.role]}</Text>
-          <Text style={styles.name}>{name}</Text>
-        </View>
-        <Pressable onPress={handleSwitch} hitSlop={10}>
-          <Text style={styles.switch}>Cerrar sesión</Text>
-        </Pressable>
-      </View>
-
-      {/* Organización activa. El superusuario puede cambiarla. */}
-      {org ? (
-        <Pressable
-          style={styles.orgChip}
-          onPress={isSuper ? () => setOrgOpen(true) : undefined}
-          disabled={!isSuper}
-        >
-          <Text style={styles.orgLabel}>Organización</Text>
-          <Text style={styles.orgValue}>
-            {org.name}
-            {org.license.status === 'suspendida' ? ' · licencia suspendida' : ''}
-            {isSuper ? ' ▾' : ''}
-          </Text>
-        </Pressable>
       ) : null}
 
       {isSuper ? (
@@ -118,20 +117,19 @@ const styles = StyleSheet.create({
   },
   impersonateText: { flex: 1, fontFamily: fonts.medium, fontSize: fontSize.caption, color: colors.amber },
   impersonateBack: { fontFamily: fonts.semibold, fontSize: fontSize.caption, color: colors.amber, marginLeft: spacing.sm },
-  row: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs, marginBottom: spacing.sm },
-  role: { fontFamily: fonts.regular, fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
-  name: { fontFamily: fonts.semibold, fontSize: fontSize.subtitle, color: colors.textPrimary },
-  switch: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.blue },
-  orgChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+  // Banda teal tenue: se extiende a los bordes del teléfono (compensa el padding del Screen).
+  band: {
+    backgroundColor: colors.primaryBg,
+    marginHorizontal: -spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
     marginBottom: spacing.md,
   },
-  orgLabel: { fontFamily: fonts.regular, fontSize: 10, color: colors.textMuted, textTransform: 'uppercase' },
-  orgValue: { fontFamily: fonts.medium, fontSize: fontSize.caption, color: colors.textPrimary, marginTop: 1 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', marginTop: spacing.xs },
+  role: { fontFamily: fonts.medium, fontSize: 11, color: colors.headerRole, textTransform: 'uppercase', letterSpacing: 0.6 },
+  name: { fontFamily: fonts.semibold, fontSize: fontSize.subtitle, color: colors.headerText, marginTop: 2 },
+  org: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.headerOrg, marginTop: 2 },
+  switch: { fontFamily: fonts.medium, fontSize: fontSize.small, color: colors.primary },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.xl, maxHeight: '70%' },
   sheetTitle: { fontFamily: fonts.medium, fontSize: fontSize.subtitle, color: colors.textPrimary, marginBottom: spacing.md },
