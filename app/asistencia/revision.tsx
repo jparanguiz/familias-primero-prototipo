@@ -16,17 +16,37 @@ export default function Revision() {
   const router = useRouter();
   const { session } = useSession();
   const { getStudent, getUser, confirmAttendance } = useAppStore();
-  const { versionId, zoneId, entries, unassigned, toggleStatus, assignUnidentified, reset, photoTaken } =
+  const { versionId, zoneId, detectedCount, entries, unassigned, toggleStatus, assignUnidentified, reset, photoTaken } =
     useAttendanceFlow();
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [savedUntil, setSavedUntil] = useState<string | null>(null);
+  const [capMsg, setCapMsg] = useState<string | null>(null);
 
   const confirmedBy = (session?.userId && getUser(session.userId)?.name) || 'Tutor del programa';
 
   const total = entries.length;
   const present = useMemo(() => entries.filter((e) => e.status === 'presente').length, [entries]);
+
+  // Tope de presentes = rostros detectados (incluye los sin asignar).
+  // present ya cuenta solo los marcados; los 'sin identificar' ocupan cupos
+  // restantes, por eso el tope efectivo para marcar a mano es detectedCount - unassigned.
+  const presentCap = Math.max(0, detectedCount - unassigned);
+
+  /** Alterna el estado respetando el tope de rostros detectados. */
+  const handleToggle = (studentId: string, currentlyPresent: boolean) => {
+    if (!currentlyPresent && present >= presentCap) {
+      setCapMsg(
+        `La foto detectó ${detectedCount} rostro${detectedCount === 1 ? '' : 's'}. ` +
+          `Para marcar a alguien más como presente, primero marca ausente a otro` +
+          (unassigned > 0 ? ' o asigna el rostro sin identificar.' : '.')
+      );
+      return;
+    }
+    setCapMsg(null);
+    toggleStatus(studentId);
+  };
 
   const assignCandidates = entries
     .filter((e) => e.status === 'ausente')
@@ -85,9 +105,11 @@ export default function Revision() {
         backLabel="Foto"
         onBack={() => router.replace('/asistencia/foto')}
         title="Revisar resultados"
-        subtitle={`${present} de ${total} presentes`}
+        subtitle={`${present} de ${total} presentes · ${detectedCount} rostros detectados`}
         step="Revisión"
       />
+
+      {capMsg ? <Banner tone="warning" text={capMsg} /> : null}
 
       {entries.map((e) => {
         const student = getStudent(e.studentId);
@@ -96,7 +118,7 @@ export default function Revision() {
           <View key={e.studentId}>
             <View style={styles.row}>
               <Text style={styles.name}>{student?.name ?? 'Alumno'}</Text>
-              <Pressable onPress={() => toggleStatus(e.studentId)} style={styles.statusChip}>
+              <Pressable onPress={() => handleToggle(e.studentId, presente)} style={styles.statusChip}>
                 <Text style={[styles.statusText, { color: presente ? colors.green : colors.red }]}>
                   {presente ? 'Presente' : 'Ausente'}
                 </Text>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -67,13 +67,23 @@ export default function FotoCurso() {
       : [];
 
   const useRealCamera = Platform.OS !== 'web' && permission?.granted === true;
-  const detectedPreview = Math.min(8, enrolled.length);
+
+  // Rostros detectados simulados: un valor plausible y estable por zona.
+  // En producción, este número vendría del servicio de detección sobre la foto.
+  const enrolledCountForZone = enrolled.length;
+  const detectedCount = useMemo(() => {
+    if (enrolledCountForZone === 0) return 0;
+    // ~70-90% de los inscritos de la zona, acotado.
+    const approx = Math.round(enrolledCountForZone * 0.8);
+    return Math.max(1, Math.min(enrolledCountForZone, approx));
+    // Recalcula al cambiar de zona o cantidad de inscritos.
+  }, [enrolledCountForZone]);
 
   const handleCapture = () => {
     if (!active || !zoneId || enrolled.length === 0) return;
     setProcessing(true);
     setTimeout(() => {
-      const result = simulateRecognition(enrolled.map((v) => v.student.id));
+      const result = simulateRecognition(enrolled.map((v) => v.student.id), detectedCount);
       setResult(result);
       setProcessing(false);
       router.push('/asistencia/revision');
@@ -112,7 +122,7 @@ export default function FotoCurso() {
           </View>
         )}
         <View style={styles.chip}>
-          <Text style={styles.chipText}>{detectedPreview} rostros detectados</Text>
+          <Text style={styles.chipText}>{detectedCount} rostros detectados</Text>
         </View>
       </View>
 
