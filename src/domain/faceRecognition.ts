@@ -11,31 +11,51 @@ export interface RecognitionResult {
 
 /**
  * SIMULACIÓN de reconocimiento facial.
- * En producción, reemplazar por la llamada a un servicio real que reciba la
- * foto y devuelva los alumnos reconocidos. Aquí marcamos aleatoriamente a la
- * mayoría como presentes y dejamos 1 rostro "sin identificar", tal como el
- * diseño de la pantalla 4.
+ *
+ * El número de rostros detectados en la foto MANDA: exactamente esa cantidad
+ * de personas queda presente (rostros reconocidos + los "sin identificar" que
+ * se asignan a mano). El resto de los inscritos queda ausente.
+ *
+ * En producción, reemplazar por un servicio real que reciba la foto y devuelva
+ * los rostros detectados y los alumnos reconocidos.
  *
  * @param enrolledIds ids de alumnos inscritos (con foto de referencia).
+ * @param detectedCount rostros detectados en la foto. Si no se entrega, se
+ *        simula un valor plausible (~85% de los inscritos).
  */
-export function simulateRecognition(enrolledIds: string[]): RecognitionResult {
+export function simulateRecognition(
+  enrolledIds: string[],
+  detectedCount?: number
+): RecognitionResult {
   const total = enrolledIds.length;
-  // Presentes: alrededor del 85% de los inscritos (mínimo 1 ausente si hay > 3).
-  const absentTarget = total > 3 ? Math.max(1, Math.round(total * 0.14)) : 0;
 
-  // Elegimos al azar qué alumnos quedan ausentes.
+  // Rostros detectados: lo entregado por la cámara, acotado a [0, total].
+  const detected =
+    detectedCount != null
+      ? Math.max(0, Math.min(detectedCount, total))
+      : total > 0
+        ? Math.max(1, Math.round(total * 0.85))
+        : 0;
+
+  // Elegimos al azar qué alumnos quedan presentes (tantos como rostros detectados).
   const shuffled = [...enrolledIds].sort(() => Math.random() - 0.5);
-  const absentSet = new Set(shuffled.slice(0, absentTarget));
+  const presentIds = new Set(shuffled.slice(0, detected));
 
   const entries = enrolledIds.map((id) => ({
     studentId: id,
-    status: (absentSet.has(id) ? 'ausente' : 'presente') as AttendanceStatus,
+    status: (presentIds.has(id) ? 'presente' : 'ausente') as AttendanceStatus,
   }));
 
-  const present = entries.filter((e) => e.status === 'presente').length;
-  // 1 rostro sin identificar cuando hay al menos un presente (como el mock).
-  const unassigned = present > 0 ? 1 : 0;
-  const detectedCount = present + unassigned;
+  // De los detectados, dejamos 1 "sin identificar" (si hay al menos 1), que el
+  // tutor asigna a mano. Ese rostro ya cuenta dentro de los detectados:
+  // marcamos como ausente a uno de los "presentes" y lo dejamos como el cupo
+  // sin identificar, de modo que present + unassigned === detected.
+  let unassigned = 0;
+  if (detected > 0) {
+    unassigned = 1;
+    const firstPresent = entries.find((e) => e.status === 'presente');
+    if (firstPresent) firstPresent.status = 'ausente';
+  }
 
-  return { detectedCount, entries, unassigned };
+  return { detectedCount: detected, entries, unassigned };
 }
