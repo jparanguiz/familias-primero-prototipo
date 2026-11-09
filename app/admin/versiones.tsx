@@ -21,10 +21,12 @@ export default function AdminVersiones() {
   const [season, setSeason] = useState<Season>('Verano');
   const [year, setYear] = useState(String(new Date().getFullYear() + 1));
   const [msg, setMsg] = useState<string | null>(null);
+  const [dup, setDup] = useState(false);
 
   const versions = orgId ? versionsInOrg(orgId) : [];
   const yearNum = parseInt(year, 10);
-  const canCreate = !Number.isNaN(yearNum) && yearNum > 2024 && !!orgId;
+  const exists = versions.some((v) => v.season === season && v.year === yearNum);
+  const canCreate = !Number.isNaN(yearNum) && yearNum > 2024 && !!orgId && !exists;
 
   const handleCreate = () => {
     if (!canCreate || !orgId) {
@@ -32,6 +34,12 @@ export default function AdminVersiones() {
       return;
     }
     const v = createVersion(orgId, season, yearNum);
+    if ('error' in v) {
+      setMsg(v.error);
+      setDup(true);
+      return;
+    }
+    setDup(false);
     setMsg(`Versión creada: ${versionLabel(v)}. Ahora agrega sus zonas.`);
   };
 
@@ -51,9 +59,10 @@ export default function AdminVersiones() {
           );
         })}
       </View>
+      {exists ? <Banner tone="warning" text={`Ya existe ${season} ${yearNum}. Solo se puede crear una vez; gestiona sus zonas abajo.`} /> : null}
       <Field label="Año" value={year} onChangeText={setYear} keyboardType="number-pad" placeholder="2027" />
 
-      {msg ? <Banner tone="success" text={msg} /> : null}
+      {msg ? <Banner tone={dup ? 'warning' : 'success'} text={msg} /> : null}
 
       <Text style={styles.sectionLabel}>Existentes</Text>
       {versions.map((v) => {
