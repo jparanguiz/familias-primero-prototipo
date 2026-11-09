@@ -32,9 +32,9 @@ export default function Seguimiento() {
   const zones: ZoneStat[] = useMemo(() => {
     if (!active) return [];
     return scope.map((zoneId) => {
-      const students = listStudents({ versionId: active.id, zoneIds: [zoneId] }).length;
+      const list = listStudents({ versionId: active.id, zoneIds: [zoneId] });
       const records = listAttendance({ versionId: active.id, zoneIds: [zoneId] });
-      return buildZoneStat(zoneId, students, records);
+      return buildZoneStat(zoneId, list.length, records, list.map((v) => v.student.run));
     });
   }, [active, scope.join(','), listStudents, listAttendance]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -92,7 +92,7 @@ export default function Seguimiento() {
                 <Donut value={totals.pct} />
                 <View style={{ flex: 1, marginLeft: spacing.lg }}>
                   <Text style={styles.heroLabel}>Asistencia acumulada</Text>
-                  <Text style={styles.heroLine}>{totals.students} niños inscritos</Text>
+                  <Text style={styles.heroLine}>{totals.uniqueStudents} niños inscritos (RUN único)</Text>
                   <Text style={styles.heroLine}>
                     {totals.sessions} {totals.sessions === 1 ? 'día registrado' : 'días registrados'}
                   </Text>
@@ -151,11 +151,13 @@ export default function Seguimiento() {
                 ))}
                 <View style={[styles.tr, styles.totalRow]}>
                   <Text style={[styles.cellZone, styles.totalText]}>Total</Text>
-                  <Text style={[styles.cellNum, styles.totalText]}>{totals.students}</Text>
+                  <Text style={[styles.cellNum, styles.totalText]}>{totals.uniqueStudents}</Text>
                   <Text style={[styles.cellNum, styles.totalText]}>{totals.sessions}</Text>
                   <View style={styles.cellPct}><PctBadge pct={totals.pct} /></View>
                 </View>
               </View>
+
+              <Text style={styles.legend}>Total de niños = RUN únicos (un niño en dos zonas se cuenta una vez).</Text>
 
               <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>Día a día</Text>
               {zones.map((z) => (
@@ -171,7 +173,7 @@ export default function Seguimiento() {
               {zones.length > 1 ? (
                 <DaySection
                   title="Total (todas las zonas)"
-                  students={totals.students}
+                  students={totals.uniqueStudents}
                   days={aggregateDays(zones)}
                   pct={totals.pct}
                   defaultOpen={false}
