@@ -1,4 +1,5 @@
 import { AttendanceRecord, AttendanceStatus } from './types';
+import { cleanRun } from './run';
 
 /**
  * Estadísticas de asistencia para la pantalla de seguimiento.
@@ -27,6 +28,8 @@ export interface ZoneStat {
   zoneId: string;
   /** Niños inscritos en la zona (versión activa). */
   students: number;
+  /** RUN normalizados de los niños inscritos (para contar únicos entre zonas). */
+  runs: string[];
   days: DayStat[];
   present: number;
   total: number;
@@ -34,7 +37,10 @@ export interface ZoneStat {
 }
 
 export interface Totals {
+  /** Suma de inscritos por zona (un niño en 2 zonas cuenta 2). */
   students: number;
+  /** Niños distintos según RUN. */
+  uniqueStudents: number;
   sessions: number;
   present: number;
   total: number;
@@ -84,11 +90,11 @@ export function buildDayStats(records: AttendanceRecord[]): DayStat[] {
     });
 }
 
-export function buildZoneStat(zoneId: string, students: number, records: AttendanceRecord[]): ZoneStat {
+export function buildZoneStat(zoneId: string, students: number, records: AttendanceRecord[], runs: string[] = []): ZoneStat {
   const days = buildDayStats(records);
   const present = days.reduce((acc, d) => acc + d.present, 0);
   const total = days.reduce((acc, d) => acc + d.total, 0);
-  return { zoneId, students, days, present, total, pct: pctOf(present, total) };
+  return { zoneId, students, runs: runs.map(cleanRun), days, present, total, pct: pctOf(present, total) };
 }
 
 /** Suma los días de varias zonas (misma fecha = una sola barra). */
@@ -115,6 +121,7 @@ export function computeTotals(zones: ZoneStat[]): Totals {
   const total = zones.reduce((acc, z) => acc + z.total, 0);
   return {
     students: zones.reduce((acc, z) => acc + z.students, 0),
+    uniqueStudents: new Set(zones.flatMap((z) => z.runs)).size,
     sessions: days.length,
     present,
     total,

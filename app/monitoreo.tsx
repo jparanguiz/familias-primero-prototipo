@@ -6,7 +6,11 @@ import { Button } from '@/components/Button';
 import { Banner } from '@/components/Banner';
 import { Select } from '@/components/Select';
 import { VersionPicker, useActiveVersion } from '@/components/VersionPicker';
+import { Card } from '@/components/Card';
+import { Donut, HBarRow } from '@/components/charts';
 import { useAppStore } from '@/store/AppStore';
+import { useSession } from '@/store/SessionStore';
+import { buildZoneStat, computeTotals } from '@/domain/attendanceStats';
 import { useVisibleZoneIds } from '@/store/useScope';
 import { buildMonitorMatrix, DayCellStatus, MonitorMatrix } from '@/domain/monitor';
 import { buildCsv, exportCsv } from '@/domain/csv';
@@ -23,6 +27,10 @@ const CELL: Record<DayCellStatus, { short: string; color: string; bg: string }> 
 
 export default function Monitoreo() {
   const { listStudents, listAttendance, getZone } = useAppStore();
+  const { session } = useSession();
+  const isAdmin = session?.role === 'admin' || session?.role === 'superusuario';
+  // Admin: abre en Resumen (agrupado). Resto: directo al detalle por niño.
+  const [view, setView] = useState<'resumen' | 'ninos'>(isAdmin ? 'resumen' : 'ninos');
   const { active } = useActiveVersion();
   const scope = useVisibleZoneIds(active?.id ?? null);
 
@@ -53,6 +61,16 @@ export default function Monitoreo() {
   }, [scope.join(','), active?.id]);
   const toggle = (id: string) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
   const allOpen = perZone.length > 0 && perZone.every((p) => open.includes(p.zoneId));
+
+  const zoneStats = useMemo(() => {
+    if (!active) return [];
+    return scope.map((zoneId) => {
+      const list = listStudents({ versionId: active.id, zoneIds: [zoneId] });
+      const records = listAttendance({ versionId: active.id, zoneIds: [zoneId] });
+      return buildZoneStat(zoneId, list.length, records, list.map((v) => v.student.run));
+    });
+  }, [active, scope.join(','), listStudents, listAttendance]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totals = useMemo(() => computeTotals(zoneStats), [zoneStats]);
 
   const hasData = perZone.some((p) => p.matrix.rows.length > 0);
 
@@ -94,7 +112,16 @@ export default function Monitoreo() {
       <ScreenHeader showBack backLabel="Inicio" title="Monitoreo de asistencia" subtitle={active ? versionLabel(active) : ''} />
       <View style={{ paddingHorizontal: spacing.xl }}>
         <VersionPicker />
-        {scope.length > 1 ? (
+        {isAdmin ? (
+          <View style={styles.segment}>
+            {([['resumen', 'Resumen'], ['ninos', 'Por niño']] as const).map(([k, label]) => (
+              <Pressable key={k} onPress={() => setView(k)} style={[styles.segBtn, view === k && styles.segBtnActive]} accessibilityRole="button" accessibilityState={{ selected: view === k }}>
+                <Text style={[styles.segText, view === k && styles.segTextActive]}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {!isAdmin && scope.length > 1 ? (
           <View style={{ marginTop: spacing.md }}>
             <Select
               label="Zonas a monitorear"
@@ -111,6 +138,27 @@ export default function Monitoreo() {
         <View style={{ paddingHorizontal: spacing.xl }}>
           <Banner tone="warning" text="No tienes zonas asignadas en esta versión." />
         </View>
+      ) : isAdmin && view === 'resumen' ? (
+        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
+          <Card style={styles.hero}>
+            <Donut value={totals.pct} />
+            <View style={{ flex: 1, marginLeft: spacing.lg }}>
+              <Text style={styles.heroBig}>{totals.uniqueStudents}</Text>
+              <Text style={styles.heroLine}>niños inscritos (RUN único)</Text>
+              <Text style={styles.heroLine}>
+                {scope.length} {scope.length === 1 ? 'zona' : 'zonas'} · {totals.sessions} {totals.sessions === 1 ? 'día' : 'días'}
+              </Text>
+            </View>
+          </Card>
+          <Text style={styles.summaryTitle}>% de asistencia por zona</Text>
+          {zoneStats.map((z) => (
+            <HBarRow key={z.zoneId} name={getZone(z.zoneId)?.name ?? z.zoneId} sub={`${z.students} niños · ${z.days.length} ${z.days.length === 1 ? 'día' : 'días'}`} pct={z.pct} />
+          ))}
+          <View style={styles.totalBox}>
+            <HBarRow name="Total todas las zonas" sub={`${totals.uniqueStudents} niños únicos · ${totals.sessions} ${totals.sessions === 1 ? 'día' : 'días'}`} pct={totals.pct} />
+          </View>
+          <Text style={styles.legend}>Verde ≥ 80% · ámbar 60–79% · rojo &lt; 60%. Para el detalle de cada niño, usa “Por niño”.</Text>
+        </ScrollView>
       ) : !hasData ? (
         <View style={{ paddingHorizontal: spacing.xl }}>
           <Banner tone="neutral" text="Aún no se ha registrado asistencia en las zonas seleccionadas." />
@@ -201,6 +249,16 @@ const COL_TOTAL = 48;
 const styles = StyleSheet.create({
   zoneBlock: { marginBottom: spacing.lg },
   zoneHeader: { paddingHorizontal: spacing.xl, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center' },
+  segment: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.md, padding: 3, marginTop: spacing.md },
+  segBtn: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: radius.md - 2 },
+  segBtnActive: { backgroundColor: colors.primary },
+  segText: { fontFamily: fonts.medium, fontSize: fontSize.body, color: colors.textSecondary },
+  segTextActive: { color: '#FFFFFF' },
+  hero: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl },
+  heroBig: { fontFamily: fonts.semibold, fontSize: 32, color: colors.textPrimary },
+  heroLine: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textSecondary, marginTop: 2 },
+  summaryTitle: { fontFamily: fonts.semibold, fontSize: fontSize.body, color: colors.primaryDark, marginBottom: spacing.md },
+  totalBox: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md },
   chev: { fontSize: 16, color: colors.textSecondary },
   toggleAll: { fontFamily: fonts.medium, fontSize: fontSize.caption, color: colors.primaryDark },
   zoneTitle: { fontFamily: fonts.medium, fontSize: fontSize.body, color: colors.textPrimary },
