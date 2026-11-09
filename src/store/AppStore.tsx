@@ -119,7 +119,8 @@ interface AppStoreValue {
   setUserPassword: (userId: string, passwordHash: string) => void;
 
   // Administración (admin / superusuario)
-  createVersion: (orgId: string, season: Season, year: number) => ProgramVersion;
+  /** Una sola versión por organización, temporada y año. */
+  createVersion: (orgId: string, season: Season, year: number) => ProgramVersion | { error: string };
   createZone: (orgId: string, data: { name: string; address: string; kind: ZoneKind; contact: ZoneContact }) => Zone;
   attachZoneToVersion: (versionId: string, zoneId: string, startDate: string, endDate: string) => ZoneAssignment;
   detachZoneFromVersion: (versionId: string, zoneId: string) => void;
@@ -171,6 +172,40 @@ function mergeSeed<T extends { id: string }>(saved: T[] | undefined, seed: T[]):
   return [...base, ...seed.filter((x) => !ids.has(x.id))];
 }
 
+/**
+ * Une versiones repetidas (misma organización, temporada y año) que pudieron crearse antes de
+ * existir la validación. Se conserva la primera y se reasignan zonas, equipo, niños y asistencia.
+ */
+function dedupeVersions(st: PersistedState): PersistedState {
+  const keep = new Map<string, string>();
+  const remap = new Map<string, string>();
+  st.versions.forEach((v) => {
+    const key = `${v.orgId}|${v.season}|${v.year}`;
+    const first = keep.get(key);
+    if (first) remap.set(v.id, first);
+    else keep.set(key, v.id);
+  });
+  if (remap.size === 0) return st;
+  const re = <T extends { versionId: string }>(x: T): T => ({ ...x, versionId: remap.get(x.versionId) ?? x.versionId });
+  const uniq = <T,>(items: T[], keyOf: (t: T) => string): T[] => {
+    const seen = new Set<string>();
+    return items.filter((i) => {
+      const k = keyOf(i);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  };
+  return {
+    ...st,
+    versions: st.versions.filter((v) => !remap.has(v.id)),
+    zoneAssignments: uniq(st.zoneAssignments.map(re), (a) => `${a.versionId}|${a.zoneId}`),
+    staffAssignments: uniq(st.staffAssignments.map(re), (a) => `${a.versionId}|${a.userId}|${a.zoneId}`),
+    students: st.students.map(re),
+    attendance: st.attendance.map(re),
+  };
+}
+
 const initialState: PersistedState = {
   orgs: SEED_ORGS,
   users: SEED_USERS,
@@ -194,7 +229,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (mounted && raw) {
           const parsed = JSON.parse(raw) as PersistedState;
-          setState({
+          setState(dedupeVersions({
             orgs: parsed.orgs?.length ? parsed.orgs : SEED_ORGS,
             users: parsed.users?.length ? parsed.users : SEED_USERS,
             zones: parsed.zones?.length ? parsed.zones : SEED_ZONES,
@@ -205,7 +240,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             students: mergeSeed(parsed.students, SEED_STUDENTS),
             consents: mergeSeed(parsed.consents, SEED_CONSENTS),
             attendance: mergeSeed(parsed.attendance, SEED_ATTENDANCE),
-          });
+          }));
         }
       } catch {
         // mantener inicial
@@ -340,6 +375,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Administración ----
   const createVersion: AppStoreValue['createVersion'] = useCallback((orgId, season, year) => {
+    const existing = state.versions.find((v) => v.orgId === orgId && v.season === season && v.year === year);
+    if (existing) return { error: `Ya existe la versión ${season} ${year}. Solo se puede crear una vez.` };
     const version: ProgramVersion = { id: uid('v'), orgId, season, year };
     setState((prev) => ({ ...prev, versions: [...prev.versions, version] }));
     return version;
