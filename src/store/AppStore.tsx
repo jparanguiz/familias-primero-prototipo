@@ -121,7 +121,10 @@ interface AppStoreValue {
   // Administración (admin / superusuario)
   /** Una sola versión por organización, temporada y año. */
   createVersion: (orgId: string, season: Season, year: number) => ProgramVersion | { error: string };
-  createZone: (orgId: string, data: { name: string; address: string; kind: ZoneKind; contact: ZoneContact }) => Zone;
+  createZone: (
+    orgId: string,
+    data: { name: string; address: string; kind: ZoneKind; contact: ZoneContact; regionId?: string; comuna?: string }
+  ) => Zone;
   attachZoneToVersion: (versionId: string, zoneId: string, startDate: string, endDate: string) => ZoneAssignment;
   detachZoneFromVersion: (versionId: string, zoneId: string) => void;
   assignStaff: (versionId: string, userId: string, zoneId: string) => void;
@@ -135,6 +138,8 @@ interface AppStoreValue {
     birthDate: string;
     grade: string;
     run: string;
+    regionId?: string;
+    comuna?: string;
     versionId: string;
     zoneId: string;
     referencePhotoId: string;
@@ -170,6 +175,15 @@ function mergeSeed<T extends { id: string }>(saved: T[] | undefined, seed: T[]):
   const base = saved ?? seed;
   const ids = new Set(base.map((x) => x.id));
   return [...base, ...seed.filter((x) => !ids.has(x.id))];
+}
+
+/** Zonas de ejemplo guardadas antes de existir la ubicación: se les completa región y comuna. */
+function withSeedLocation(zones: Zone[]): Zone[] {
+  return zones.map((z) => {
+    if (z.regionId) return z;
+    const seed = SEED_ZONES.find((s) => s.id === z.id);
+    return seed?.regionId ? { ...z, regionId: seed.regionId, comuna: seed.comuna } : z;
+  });
 }
 
 /**
@@ -232,7 +246,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           setState(dedupeVersions({
             orgs: parsed.orgs?.length ? parsed.orgs : SEED_ORGS,
             users: parsed.users?.length ? parsed.users : SEED_USERS,
-            zones: parsed.zones?.length ? parsed.zones : SEED_ZONES,
+            zones: parsed.zones?.length ? withSeedLocation(parsed.zones) : SEED_ZONES,
             versions: parsed.versions?.length ? parsed.versions : SEED_VERSIONS,
             zoneAssignments: parsed.zoneAssignments ?? SEED_ZONE_ASSIGNMENTS,
             staffAssignments: parsed.staffAssignments ?? SEED_STAFF_ASSIGNMENTS,
@@ -382,8 +396,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     return version;
   }, []);
 
-  const createZone: AppStoreValue['createZone'] = useCallback((orgId, { name, address, kind, contact }) => {
-    const zone: Zone = { id: uid('z'), orgId, name, address, kind, contact, contactLog: [] };
+  const createZone: AppStoreValue['createZone'] = useCallback((orgId, { name, address, kind, contact, regionId, comuna }) => {
+    const zone: Zone = { id: uid('z'), orgId, name, address, kind, regionId, comuna, contact, contactLog: [] };
     setState((prev) => ({ ...prev, zones: [...prev.zones, zone] }));
     return zone;
   }, []);
@@ -544,6 +558,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       birthDate: args.birthDate,
       grade: args.grade,
       run: args.run,
+      regionId: args.regionId,
+      comuna: args.comuna,
       versionId: args.versionId,
       zoneId: args.zoneId,
       qrToken: `FP-${args.versionId}-${uid('S')}`,

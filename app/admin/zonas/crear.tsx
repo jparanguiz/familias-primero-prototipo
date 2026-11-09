@@ -20,6 +20,7 @@ import {
 } from '@/domain/bulkImport';
 import { colors, fonts, fontSize, radius, spacing } from '@/theme';
 
+import { REGIONS, findComuna, findRegion, getRegion } from '@/domain/geo';
 const KINDS: ZoneKind[] = ['Colegio', 'Municipalidad', 'Biblioteca', 'Otra'];
 
 export default function CrearZona() {
@@ -30,6 +31,8 @@ export default function CrearZona() {
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [regionId, setRegionId] = useState<string | null>(null);
+  const [comuna, setComuna] = useState<string | null>(null);
   const [kind, setKind] = useState<ZoneKind>('Colegio');
   const [cName, setCName] = useState('');
   const [cPhone, setCPhone] = useState('');
@@ -39,7 +42,7 @@ export default function CrearZona() {
   const [error, setError] = useState<string | null>(null);
 
   const canCreate =
-    name.trim().length >= 3 && address.trim().length >= 3 && cName.trim() && cPhone.trim() && cEmail.trim() && cRole.trim();
+    name.trim().length >= 3 && address.trim().length >= 3 && regionId && comuna && cName.trim() && cPhone.trim() && cEmail.trim() && cRole.trim();
 
   const handleCreate = () => {
     if (!canCreate) { setError('Completa los datos de la institución y del contacto responsable.'); return; }
@@ -48,6 +51,8 @@ export default function CrearZona() {
       name: name.trim(),
       address: address.trim(),
       kind,
+      regionId: regionId ?? undefined,
+      comuna: comuna ?? undefined,
       contact: { name: cName.trim(), phone: cPhone.trim(), email: cEmail.trim(), role: cRole.trim() },
     });
     // Vuelve a "Agregar zona" para sumarla a la versión con sus fechas.
@@ -70,6 +75,11 @@ export default function CrearZona() {
           name: zn,
           address: addr,
           kind: normalizeZoneKind(pick(row, 'tipo', 'kind')),
+          ...(() => {
+            const reg = findRegion(pick(row, 'region', 'región'));
+            const com = reg ? findComuna(reg.id, pick(row, 'comuna')) : undefined;
+            return { regionId: reg?.id, comuna: com };
+          })(),
           contact: {
             name: pick(row, 'contacto_nombre', 'contacto', 'responsable'),
             phone: pick(row, 'contacto_telefono', 'telefono', 'fono'),
@@ -114,6 +124,22 @@ export default function CrearZona() {
       <Field label="Nombre de la institución" value={name} onChangeText={setName} placeholder="Colegio Lo Espejo" autoCapitalize="words" />
       <Field label="Dirección" value={address} onChangeText={setAddress} placeholder="Av. Central 123" autoCapitalize="words" />
       <Select
+        label="Región"
+        placeholder="Elige una región"
+        value={regionId}
+        onChange={(v) => { setRegionId(v); setComuna(null); }}
+        options={REGIONS.map((r) => ({ value: r.id, label: r.name }))}
+      />
+      {regionId ? (
+        <Select
+          label="Comuna"
+          placeholder="Elige una comuna"
+          value={comuna}
+          onChange={setComuna}
+          options={(getRegion(regionId)?.comunas ?? []).map((c) => ({ value: c, label: c }))}
+        />
+      ) : null}
+      <Select
         label="Tipo"
         value={kind}
         onChange={(v) => setKind(v as ZoneKind)}
@@ -130,7 +156,7 @@ export default function CrearZona() {
       {error ? <Banner tone="error" text={error} /> : null}
 
       <Text style={styles.sectionLabel}>Carga masiva</Text>
-      <Banner tone="neutral" text="Importa varias zonas desde .xlsx o .csv. La columna 'version' (ej. Verano 2027) es opcional: si coincide con una versión existente, la zona se suma a esa versión." />
+      <Banner tone="neutral" text="Importa varias zonas desde .xlsx o .csv. Las columnas 'region' y 'comuna' sirven para sugerir la zona más cercana a cada niño. La columna 'version' (ej. Verano 2027) es opcional: si coincide con una versión existente, la zona se suma a esa versión." />
       <View style={{ gap: spacing.sm }}>
         <Button label="Importar zonas (.xlsx / .csv)" variant="secondary" onPress={handleBulk} />
         <Pressable onPress={downloadZonesTemplate}>

@@ -52,6 +52,8 @@ export default function OnboardingFoto() {
       birthDate: child.birthDate,
       grade: child.grade,
       run: child.run,
+      regionId: child.regionId || undefined,
+      comuna: child.comuna || undefined,
       versionId,
       zoneId,
       referencePhotoId: childPhotoId!,

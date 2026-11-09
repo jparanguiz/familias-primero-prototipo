@@ -75,17 +75,19 @@ export default function OnboardingContexto() {
     if (!zId && zonesForVersion.length === 1) setZId(zonesForVersion[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zonesForVersion.length, vId]);
-  const canContinue = Boolean(vId && zId);
+  // El apoderado elige la zona después, según la comuna del niño; el tutor / QR ya la traen.
+  const zoneLater = !byTutor && !fromQr;
+  const canContinue = Boolean(vId && (zId || zoneLater));
 
   const handleContinue = () => {
-    if (!vId || !zId || !orgId) return;
-    setContext({ orgId, versionId: vId, zoneId: zId, channel, enrolledByUserId: byUserId });
+    if (!vId || (!zId && !zoneLater) || !orgId) return;
+    setContext({ orgId, versionId: vId, zoneId: zoneLater ? null : zId, channel, enrolledByUserId: byUserId });
     router.push('/onboarding/nino');
   };
 
   return (
     <Screen footer={<Button label="Continuar" onPress={handleContinue} disabled={!canContinue} />}>
-      <ScreenHeader showBack backLabel="Atrás" title="Inscribir un niño" subtitle={byTutor ? "Elige la zona" : "Elige versión y zona"} step="Onboarding" />
+      <ScreenHeader showBack backLabel="Atrás" title="Inscribir un niño" subtitle={zoneLater ? "Elige la versión" : "Elige la zona"} step="Onboarding" />
 
       {fromQr ? <Banner tone="info" text="Datos precargados desde el QR del tutor del programa." /> : null}
       {channel === 'tutor' && !fromQr ? <Banner tone="info" text="Inscripción iniciada por el tutor del programa." /> : null}
@@ -98,7 +100,7 @@ export default function OnboardingContexto() {
         options={versions.map((v) => ({ value: v.id, label: versionLabel(v) }))}
       />
 
-      {vId ? (
+      {vId && !zoneLater ? (
         zonesForVersion.length === 0 ? (
           <Banner tone="warning" text="Esta versión aún no tiene zonas disponibles." />
         ) : (
@@ -112,7 +114,7 @@ export default function OnboardingContexto() {
         )
       ) : null}
 
-      {vId && zId ? (
+      {vId && zId && !zoneLater ? (
         <Banner tone="neutral" text={`Inscribirás en ${versionLabel(getVersion(vId)!)} · ${getZone(zId)?.name}`} />
       ) : null}
     </Screen>

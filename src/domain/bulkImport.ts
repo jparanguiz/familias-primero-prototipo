@@ -92,9 +92,9 @@ export async function downloadZonesTemplate(): Promise<void> {
   // organización, la zona se suma además a esa versión. Si va vacía, solo
   // queda en el catálogo.
   const csv = [
-    'nombre,direccion,tipo,contacto_nombre,contacto_telefono,contacto_email,contacto_cargo,version,inicio,fin',
-    'Colegio Ejemplo,Av. Siempre Viva 100,Colegio,Ana Pérez,+56 9 0000 0000,ana@colegio.cl,Directora,Verano 2027,2027-01-11,2027-01-22',
-    'Biblioteca Ejemplo,Calle 2,Biblioteca,Luis Díaz,+56 9 1111 1111,luis@bib.cl,Encargado,,,',
+    'nombre,direccion,region,comuna,tipo,contacto_nombre,contacto_telefono,contacto_email,contacto_cargo,version,inicio,fin',
+    'Colegio Ejemplo,Av. Siempre Viva 100,Metropolitana de Santiago,Lo Espejo,Colegio,Ana Pérez,+56 9 0000 0000,ana@colegio.cl,Directora,Verano 2027,2027-01-11,2027-01-22',
+    'Biblioteca Ejemplo,Calle 2,Metropolitana de Santiago,La Pintana,Biblioteca,Luis Díaz,+56 9 1111 1111,luis@bib.cl,Encargado,,,',
   ].join('\n');
   await exportCsv('plantilla_zonas.csv', csv);
 }

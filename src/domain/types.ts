@@ -96,6 +96,9 @@ export interface Zone {
   name: string;
   address: string;
   kind: ZoneKind;
+  /** Ubicación (id de región y comuna) para sugerir la zona más cercana a cada niño. */
+  regionId?: string;
+  comuna?: string;
   contact: ZoneContact;
   /** Historial de veces que se usó el dato de contacto. */
   contactLog: ContactLogEntry[];
@@ -149,6 +152,9 @@ export interface Student {
   birthDate: string; // ISO (fecha de nacimiento)
   grade: string; // curso / nivel
   run: string; // RUN del niño
+  /** Dónde vive el niño (para sugerir zonas cercanas). */
+  regionId?: string;
+  comuna?: string;
   versionId: string;
   zoneId: string;
   qrToken: string;
