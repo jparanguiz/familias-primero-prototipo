@@ -6,6 +6,9 @@ export interface ChildData {
   birthDate: string;
   grade: string;
   run: string;
+  /** Dónde vive el niño. */
+  regionId: string;
+  comuna: string;
 }
 
 interface OnboardingState {
@@ -25,17 +28,19 @@ interface OnboardingValue extends OnboardingState {
   setContext: (args: {
     orgId: string;
     versionId: string;
-    zoneId: string;
+    zoneId: string | null;
     channel?: EnrollmentChannel;
     enrolledByUserId?: string | null;
   }) => void;
+  /** Zona elegida más tarde (apoderado: se sugiere según la comuna del niño). */
+  setZone: (zoneId: string) => void;
   setChild: (child: ChildData) => void;
   setChildPhoto: (photoId: string) => void;
   setStudentId: (id: string) => void;
   reset: () => void;
 }
 
-const emptyChild: ChildData = { name: '', birthDate: '', grade: '', run: '' };
+const emptyChild: ChildData = { name: '', birthDate: '', grade: '', run: '', regionId: '', comuna: '' };
 
 const defaultState: OnboardingState = {
   orgId: null,
@@ -58,6 +63,7 @@ export function OnboardingFlowProvider({ children }: { children: React.ReactNode
       ...state,
       setContext: ({ orgId, versionId, zoneId, channel = 'apoderado', enrolledByUserId = null }) =>
         setState((p) => ({ ...p, orgId, versionId, zoneId, channel, enrolledByUserId })),
+      setZone: (zoneId) => setState((p) => ({ ...p, zoneId })),
       setChild: (child) => setState((p) => ({ ...p, child })),
       setChildPhoto: (childPhotoId) => setState((p) => ({ ...p, childPhotoId })),
       setStudentId: (studentId) => setState((p) => ({ ...p, studentId })),

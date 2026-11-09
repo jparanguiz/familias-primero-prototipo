@@ -37,20 +37,20 @@ export const SEED_ORGS: Organization[] = [
 // --- Zonas (institución) por organización ---
 export const SEED_ZONES: Zone[] = [
   {
-    id: 'z1', orgId: ORG_FUNDACION, name: 'Colegio Lo Espejo', address: 'Av. Central 123, Lo Espejo', kind: 'Colegio',
+    id: 'z1', orgId: ORG_FUNDACION, name: 'Colegio Lo Espejo', address: 'Av. Central 123, Lo Espejo', kind: 'Colegio', regionId: '13', comuna: 'Lo Espejo',
     contact: { name: 'Rosa Fernández', phone: '+56 9 1111 1111', email: 'rosa@loespejo.cl', role: 'Directora' }, contactLog: [],
   },
   {
-    id: 'z2', orgId: ORG_FUNDACION, name: 'Biblioteca La Pintana', address: 'Calle del Libro 45, La Pintana', kind: 'Biblioteca',
+    id: 'z2', orgId: ORG_FUNDACION, name: 'Biblioteca La Pintana', address: 'Calle del Libro 45, La Pintana', kind: 'Biblioteca', regionId: '13', comuna: 'La Pintana',
     contact: { name: 'Jorge Peña', phone: '+56 9 2222 2222', email: 'jorge@biblapintana.cl', role: 'Encargado' }, contactLog: [],
   },
   {
-    id: 'z3', orgId: ORG_FUNDACION, name: 'Municipalidad de El Bosque', address: 'Plaza Mayor 7, El Bosque', kind: 'Municipalidad',
+    id: 'z3', orgId: ORG_FUNDACION, name: 'Municipalidad de El Bosque', address: 'Plaza Mayor 7, El Bosque', kind: 'Municipalidad', regionId: '13', comuna: 'El Bosque',
     contact: { name: 'Marta Ruiz', phone: '+56 9 3333 3333', email: 'marta@elbosque.cl', role: 'Coord. social' }, contactLog: [],
   },
   // Zona de la municipalidad licenciataria
   {
-    id: 'z4', orgId: ORG_MUNI, name: 'Escuela Municipal Las Rosas', address: 'Los Rosales 500, La Pintana', kind: 'Colegio',
+    id: 'z4', orgId: ORG_MUNI, name: 'Escuela Municipal Las Rosas', address: 'Los Rosales 500, La Pintana', kind: 'Colegio', regionId: '13', comuna: 'La Pintana',
     contact: { name: 'Pamela Soto', phone: '+56 9 4444 4444', email: 'pamela@lapintana.cl', role: 'Jefa DAEM' }, contactLog: [],
   },
 ];
