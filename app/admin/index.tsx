@@ -45,7 +45,8 @@ export default function AdminHome() {
 
       <Text style={[styles.sectionLabel, styles.sectionViolet]}>Programa</Text>
       <Tile tone="violet" title="Inscritos por versión" description="Ver todas las zonas" onPress={() => router.push('/inscritos')} />
-      <Tile tone="violet" title="Monitoreo de asistencia" description="Acumulada + exportar CSV" onPress={() => router.push('/monitoreo')} />
+      <Tile tone="violet" title="Seguimiento de asistencia" description="Resumen visual y % por zona" onPress={() => router.push('/seguimiento')} />
+      <Tile tone="violet" title="Monitoreo de asistencia" description="Detalle por niño · exportar CSV" onPress={() => router.push('/monitoreo')} />
     </Screen>
   );
 }

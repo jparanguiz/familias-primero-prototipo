@@ -58,7 +58,8 @@ export default function TutorHome() {
 
       <Text style={styles.sectionLabel}>Asistencia</Text>
       <Tile title="Pasar asistencia (foto)" description="Reconocimiento del grupo" onPress={() => router.push('/asistencia/foto')} />
-      <Tile title="Monitoreo de asistencia" description="Acumulada + exportar CSV" onPress={() => router.push('/monitoreo')} />
+      <Tile title="Seguimiento de asistencia" description="Resumen visual y % por zona" onPress={() => router.push('/seguimiento')} />
+      <Tile title="Monitoreo de asistencia" description="Detalle por niño · exportar CSV" onPress={() => router.push('/monitoreo')} />
 
       <Text style={styles.sectionLabel}>Programa</Text>
       <Tile title="Inscritos de mis zonas" onPress={() => router.push('/inscritos')} />

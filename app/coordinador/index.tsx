@@ -47,7 +47,8 @@ export default function CoordinadorHome() {
 
       <Text style={styles.sectionLabel}>Seguimiento</Text>
       <Tile title="Inscritos de mis zonas" onPress={() => router.push('/inscritos')} />
-      <Tile title="Monitoreo de asistencia" description="Acumulada + exportar CSV" onPress={() => router.push('/monitoreo')} />
+      <Tile title="Seguimiento de asistencia" description="Resumen visual y % por zona" onPress={() => router.push('/seguimiento')} />
+      <Tile title="Monitoreo de asistencia" description="Detalle por niño · exportar CSV" onPress={() => router.push('/monitoreo')} />
     </Screen>
   );
 }
