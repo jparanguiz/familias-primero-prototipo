@@ -92,7 +92,7 @@ interface ScreenProps {
 /** Contenedor de pantalla con padding estándar y footer fijo opcional. */
 export function Screen({ children, scroll = true, contentStyle, footer }: ScreenProps) {
   const body = (
-    <View style={[styles.body, contentStyle]}>{children}</View>
+    <View style={[styles.body, !scroll && styles.bodyFill, contentStyle]}>{children}</View>
   );
   return (
     <View style={styles.root}>
@@ -126,6 +126,10 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
+  },
+  // Sin scroll propio: el cuerpo ocupa el alto disponible para que un ScrollView interno pueda desplazarse.
+  bodyFill: {
+    flex: 1,
   },
   footer: {
     paddingHorizontal: spacing.xl,
