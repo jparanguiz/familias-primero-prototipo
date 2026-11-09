@@ -57,6 +57,7 @@ export default function SuperHome() {
           <Tile title="Zonas (instituciones)" onPress={() => router.push('/admin/zonas')} />
           <Tile title="Usuarios del equipo" onPress={() => router.push('/admin/usuarios')} />
           <Tile title="Inscritos por versión" onPress={() => router.push('/inscritos')} />
+          <Tile title="Seguimiento de asistencia" onPress={() => router.push('/seguimiento')} />
           <Tile title="Monitoreo de asistencia" onPress={() => router.push('/monitoreo')} />
         </>
       ) : null}

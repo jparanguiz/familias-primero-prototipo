@@ -106,6 +106,13 @@ la versión con sus fechas; luego se **convoca a los niños**.
    niños inscritos en esa zona/versión.
 3. Revisar (alternar Presente/Ausente, asignar rostros sin identificar) y confirmar.
 
+**Seguimiento de asistencia (tutor / coordinador / admin / superusuario en una org)**
+- Tutor ve sus zonas, coordinador las zonas a su cargo y admin todas. Dos vistas:
+  **Visual** (aro de % acumulado, barras por día y por zona) y **Detalle** (tabla por
+  zona con total de niños, días y % + total general y desglose día a día).
+- % del día = presentes / evaluados; % de zona = acumulado. Colores: verde ≥ 80, ámbar
+  60–79, rojo < 60 (`ATTENDANCE_GOOD/WARN` en `src/domain/attendanceStats.ts`).
+
 **Monitoreo y exportación (tutor / coordinador / admin)**
 - Matriz acumulada de asistencia (niños × días) para la versión activa, filtrada por
   las zonas que te corresponden. Maneja **enrolamiento tardío** (días previos a la
@@ -126,6 +133,7 @@ app/
   onboarding/            _layout + index(versión/zona) + nino(datos) + foto + 1a..1d
   asistencia/            _layout + foto + revision (solo tutor)
   inscritos.tsx          Lista por rol/zona de la versión
+  seguimiento.tsx        Resumen visual y detalle de % por zona
   monitoreo.tsx          Asistencia acumulada agrupada por zona + exportar CSV
 src/
   domain/                types, run (módulo 11), document, format, seed, retention,

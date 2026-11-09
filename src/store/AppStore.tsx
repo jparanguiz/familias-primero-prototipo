@@ -164,6 +164,13 @@ function uid(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/** Une lo guardado con los datos de ejemplo, agregando solo los ids que no existan. */
+function mergeSeed<T extends { id: string }>(saved: T[] | undefined, seed: T[]): T[] {
+  const base = saved ?? seed;
+  const ids = new Set(base.map((x) => x.id));
+  return [...base, ...seed.filter((x) => !ids.has(x.id))];
+}
+
 const initialState: PersistedState = {
   orgs: SEED_ORGS,
   users: SEED_USERS,
@@ -194,9 +201,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             versions: parsed.versions?.length ? parsed.versions : SEED_VERSIONS,
             zoneAssignments: parsed.zoneAssignments ?? SEED_ZONE_ASSIGNMENTS,
             staffAssignments: parsed.staffAssignments ?? SEED_STAFF_ASSIGNMENTS,
-            students: parsed.students ?? SEED_STUDENTS,
-            consents: parsed.consents ?? SEED_CONSENTS,
-            attendance: parsed.attendance ?? SEED_ATTENDANCE,
+            // Se suman los ejemplos nuevos que falten (por id) sin tocar lo ya guardado.
+            students: mergeSeed(parsed.students, SEED_STUDENTS),
+            consents: mergeSeed(parsed.consents, SEED_CONSENTS),
+            attendance: mergeSeed(parsed.attendance, SEED_ATTENDANCE),
           });
         }
       } catch {

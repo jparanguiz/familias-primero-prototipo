@@ -1,5 +1,6 @@
 import {
   AttendanceRecord,
+  AttendanceStatus,
   Consent,
   Organization,
   ProgramVersion,
@@ -109,7 +110,7 @@ function fakeRun(i: number): string {
 }
 
 /** 22 alumnos de ejemplo en Verano 2027 (Fundación), Colegio Lo Espejo. */
-export const SEED_STUDENTS: Student[] = NAMES.map((name, i) => {
+const STUDENTS_Z1: Student[] = NAMES.map((name, i) => {
   const n = String(i + 1).padStart(2, '0');
   return {
     id: `s${n}`,
@@ -128,7 +129,33 @@ export const SEED_STUDENTS: Student[] = NAMES.map((name, i) => {
   };
 });
 
-export const SEED_CONSENTS: Consent[] = SEED_STUDENTS.slice(0, 20).map((s, i) => ({
+/** 10 alumnos de ejemplo en Verano 2027 (Fundación), Biblioteca La Pintana. */
+const NAMES_Z2 = [
+  'Sofía Lagos', 'Ignacio Bravo', 'Camila Ortiz', 'Felipe Salas', 'Javiera Mora',
+  'Cristóbal Pino', 'Daniela Ríos', 'Nicolás Parra', 'Constanza Leiva', 'Sebastián Arce',
+];
+
+const STUDENTS_Z2: Student[] = NAMES_Z2.map((name, i) => {
+  const n = String(i + 1).padStart(2, '0');
+  return {
+    id: `t${n}`,
+    orgId: ORG_FUNDACION,
+    name,
+    birthDate: `201${6 + (i % 3)}-0${(i % 9) + 1}-20`,
+    grade: GRADES[i % GRADES.length],
+    run: fakeRun(40 + i),
+    versionId: SEED_VERSION.id,
+    zoneId: 'z2',
+    qrToken: `FP-${SEED_VERSION.id}-T${n}`,
+    referencePhotoId: `ref_t${n}`,
+    enrollmentChannel: 'apoderado',
+    enrolledAt: '2027-01-18',
+  };
+});
+
+export const SEED_STUDENTS: Student[] = [...STUDENTS_Z1, ...STUDENTS_Z2];
+
+export const SEED_CONSENTS: Consent[] = [...STUDENTS_Z1.slice(0, 20), ...STUDENTS_Z2].map((s, i) => ({
   id: `c_${s.id}`,
   studentId: s.id,
   guardian: {
@@ -139,7 +166,54 @@ export const SEED_CONSENTS: Consent[] = SEED_STUDENTS.slice(0, 20).map((s, i) =>
   },
   signaturePng: 'seed-signature',
   documentHash: `hash_${s.id}`,
-  signedAt: '2027-01-11',
+  signedAt: s.enrolledAt,
 }));
 
-export const SEED_ATTENDANCE: AttendanceRecord[] = [];
+/**
+ * Asistencia de ejemplo: varios días ya confirmados en cada zona, para poder
+ * ver el seguimiento (visual y detalle) desde el primer ingreso a la demo.
+ * Los ausentes se reparten de forma determinista.
+ */
+function seedDay(
+  zoneId: string,
+  zoneStudents: Student[],
+  day: string,
+  absentCount: number,
+  shift: number,
+  confirmedBy: string,
+  retainedUntil: string
+): AttendanceRecord {
+  const n = zoneStudents.length;
+  const entries = zoneStudents.map((s, i) => ({
+    studentId: s.id,
+    status: (((i + shift) % n) < absentCount ? 'ausente' : 'presente') as AttendanceStatus,
+  }));
+  const at = `${day}T10:00:00`;
+  return {
+    id: `att_seed_${zoneId}_${day}`,
+    date: at,
+    versionId: SEED_VERSION.id,
+    zoneId,
+    entries,
+    confirmedBy,
+    confirmedAt: at,
+    groupPhotoId: `seed_photo_${zoneId}_${day}`,
+    photoRetainedUntil: retainedUntil,
+  };
+}
+
+const Z1_DAYS = ['2027-01-11', '2027-01-12', '2027-01-13', '2027-01-14', '2027-01-15'];
+const Z1_ABSENT = [3, 4, 2, 5, 3];
+const Z1_SHIFT = [0, 5, 9, 13, 17];
+const Z2_DAYS = ['2027-01-18', '2027-01-19', '2027-01-20'];
+const Z2_ABSENT = [2, 1, 3];
+const Z2_SHIFT = [0, 4, 7];
+
+export const SEED_ATTENDANCE: AttendanceRecord[] = [
+  ...Z1_DAYS.map((d, i) =>
+    seedDay('z1', STUDENTS_Z1, d, Z1_ABSENT[i], Z1_SHIFT[i], 'Pedro Tutor', '2027-02-22T00:00:00.000Z')
+  ),
+  ...Z2_DAYS.map((d, i) =>
+    seedDay('z2', STUDENTS_Z2, d, Z2_ABSENT[i], Z2_SHIFT[i], 'Lucía Tutora', '2027-02-28T00:00:00.000Z')
+  ),
+];
