@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Screen, ScreenHeader } from '@/components/Screen';
 import { Button } from '@/components/Button';
@@ -44,6 +44,15 @@ export default function Monitoreo() {
       return { zoneId, matrix: buildMonitorMatrix(students, records) };
     });
   }, [active, zonesToShow, listStudents, listAttendance]);
+
+  // Zonas abiertas (detalle por niño). Con varias zonas parten colapsadas: solo resumen por zona.
+  const [open, setOpen] = useState<string[]>([]);
+  useEffect(() => {
+    setOpen(scope.length === 1 ? scope : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope.join(','), active?.id]);
+  const toggle = (id: string) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
+  const allOpen = perZone.length > 0 && perZone.every((p) => open.includes(p.zoneId));
 
   const hasData = perZone.some((p) => p.matrix.rows.length > 0);
 
@@ -108,8 +117,23 @@ export default function Monitoreo() {
         </View>
       ) : (
         <ScrollView style={{ marginTop: spacing.sm }} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+          {perZone.length > 1 ? (
+            <Pressable
+              onPress={() => setOpen(allOpen ? [] : perZone.map((p) => p.zoneId))}
+              style={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.md }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.toggleAll}>{allOpen ? 'Colapsar todo' : 'Expandir todo'}</Text>
+            </Pressable>
+          ) : null}
           {perZone.map(({ zoneId, matrix }) => (
-            <ZoneBlock key={zoneId} title={getZone(zoneId)?.name ?? zoneId} matrix={matrix} />
+            <ZoneBlock
+              key={zoneId}
+              title={getZone(zoneId)?.name ?? zoneId}
+              matrix={matrix}
+              open={open.includes(zoneId)}
+              onToggle={() => toggle(zoneId)}
+            />
           ))}
           <View style={{ paddingHorizontal: spacing.xl }}>
             <Text style={styles.legend}>P presente · A ausente · – no enrolado aún · · sin registro</Text>
@@ -120,18 +144,21 @@ export default function Monitoreo() {
   );
 }
 
-function ZoneBlock({ title, matrix }: { title: string; matrix: MonitorMatrix }) {
+function ZoneBlock({ title, matrix, open, onToggle }: { title: string; matrix: MonitorMatrix; open: boolean; onToggle: () => void }) {
   const totalPresent = matrix.rows.reduce((a, r) => a + r.presentCount, 0);
   const totalSessions = matrix.rows.reduce((a, r) => a + r.totalSessions, 0);
   const groupPct = totalSessions > 0 ? Math.round((totalPresent / totalSessions) * 100) : 0;
 
   return (
     <View style={styles.zoneBlock}>
-      <View style={styles.zoneHeader}>
-        <Text style={styles.zoneTitle}>{title}</Text>
-        <Text style={styles.zoneAgg}>{matrix.rows.length} niños · {groupPct}% asistencia</Text>
-      </View>
-      {matrix.days.length === 0 ? (
+      <Pressable onPress={onToggle} style={styles.zoneHeader} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.zoneTitle}>{title}</Text>
+          <Text style={styles.zoneAgg}>{matrix.rows.length} niños · {groupPct}% asistencia</Text>
+        </View>
+        <Text style={styles.chev}>{open ? '⌃' : '⌄'}</Text>
+      </Pressable>
+      {!open ? null : matrix.days.length === 0 ? (
         <Text style={styles.noSessions}>Sin sesiones registradas.</Text>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ paddingHorizontal: spacing.xl }}>
@@ -173,7 +200,9 @@ const COL_TOTAL = 48;
 
 const styles = StyleSheet.create({
   zoneBlock: { marginBottom: spacing.lg },
-  zoneHeader: { paddingHorizontal: spacing.xl, marginBottom: spacing.sm },
+  zoneHeader: { paddingHorizontal: spacing.xl, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center' },
+  chev: { fontSize: 16, color: colors.textSecondary },
+  toggleAll: { fontFamily: fonts.medium, fontSize: fontSize.caption, color: colors.primaryDark },
   zoneTitle: { fontFamily: fonts.medium, fontSize: fontSize.body, color: colors.textPrimary },
   zoneAgg: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textSecondary, marginTop: 2 },
   noSessions: { fontFamily: fonts.regular, fontSize: fontSize.caption, color: colors.textMuted, paddingHorizontal: spacing.xl },
