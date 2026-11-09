@@ -10,12 +10,14 @@ import { useOnboarding } from '@/store/OnboardingFlow';
 import { useActiveOrgId } from '@/store/useScope';
 import { EnrollmentChannel } from '@/domain/types';
 import { decodeOnboardingQr } from '@/domain/qr';
-import { versionLabel } from '@/domain/retention';
+import { enrollableVersions, versionLabel } from '@/domain/retention';
+import { useSession } from '@/store/SessionStore';
 
 export default function OnboardingContexto() {
   const router = useRouter();
   const params = useLocalSearchParams<{ qr?: string; channel?: string; by?: string }>();
-  const { getVersion, getZone, zonesInVersion, versionsInOrg, getVersion: getV } = useAppStore();
+  const { getVersion, getZone, zonesInVersion, versionsInOrg, getVersion: getV, zoneAssignments, visibleZonesInVersion } = useAppStore();
+  const { session } = useSession();
   const { versionId, zoneId, setContext } = useOnboarding();
   const sessionOrgId = useActiveOrgId();
 
@@ -27,7 +29,20 @@ export default function OnboardingContexto() {
   const [fromQr, setFromQr] = useState(false);
   const [locked, setLocked] = useState(false);
 
-  const versions = orgId ? versionsInOrg(orgId) : [];
+  // Solo versiones en curso o por venir; la primera es la versión por defecto.
+  const versions = orgId ? enrollableVersions(versionsInOrg(orgId), zoneAssignments) : [];
+  const defaultVersionId = versions[0]?.id ?? null;
+  const byTutor = channel === 'tutor';
+
+  // Si no hay versión elegida (o ya no es válida), usa la por defecto.
+  useEffect(() => {
+    if (locked) return;
+    if (!vId || !versions.some((v) => v.id === vId)) {
+      setVId(defaultVersionId);
+      setZId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultVersionId, vId, locked]);
 
   // Precarga desde QR (del apoderado al escanear) o desde "Inscribir yo mismo" (tutor).
   useEffect(() => {
@@ -50,7 +65,16 @@ export default function OnboardingContexto() {
     }
   }, [params.qr, params.channel, params.by, locked, getV, sessionOrgId]);
 
-  const zonesForVersion = vId ? zonesInVersion(vId) : [];
+  // El tutor solo inscribe en las zonas que tiene asignadas.
+  const tutorZones =
+    byTutor && vId && byUserId ? visibleZonesInVersion(byUserId, session?.role ?? 'tutor', vId) : [];
+  const zonesForVersion = vId ? (byTutor && tutorZones.length > 0 ? tutorZones : zonesInVersion(vId)) : [];
+
+  // Una sola zona posible: queda elegida por defecto.
+  useEffect(() => {
+    if (!zId && zonesForVersion.length === 1) setZId(zonesForVersion[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zonesForVersion.length, vId]);
   const canContinue = Boolean(vId && zId);
 
   const handleContinue = () => {
@@ -61,7 +85,7 @@ export default function OnboardingContexto() {
 
   return (
     <Screen footer={<Button label="Continuar" onPress={handleContinue} disabled={!canContinue} />}>
-      <ScreenHeader showBack backLabel="Atrás" title="Inscribir un niño" subtitle="Elige versión y zona" step="Onboarding" />
+      <ScreenHeader showBack backLabel="Atrás" title="Inscribir un niño" subtitle={byTutor ? "Elige la zona" : "Elige versión y zona"} step="Onboarding" />
 
       {fromQr ? <Banner tone="info" text="Datos precargados desde el QR del tutor del programa." /> : null}
       {channel === 'tutor' && !fromQr ? <Banner tone="info" text="Inscripción iniciada por el tutor del programa." /> : null}
