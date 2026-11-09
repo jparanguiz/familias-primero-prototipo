@@ -65,3 +65,33 @@ export function daysUntilPhotoExpiry(retainedUntilIso: string, now: Date = new D
 export function versionLabel(v: ProgramVersion): string {
   return `${v.season} ${v.year}`;
 }
+
+/**
+ * Versiones en las que se puede inscribir: en curso o por venir (no las pasadas).
+ * Las fechas de una versión salen de las zonas que participan (mín. inicio, máx. término).
+ * Una versión sin fechas aún se considera "por venir".
+ * Orden: primero la que está en curso, luego la más próxima. La primera es la versión por defecto.
+ */
+export function enrollableVersions(
+  versions: ProgramVersion[],
+  assignments: ZoneAssignment[],
+  now: Date = new Date()
+): ProgramVersion[] {
+  const today = now.toISOString().slice(0, 10);
+  const info = versions.map((v) => {
+    const mine = assignments.filter((a) => a.versionId === v.id);
+    const start = mine.length ? mine.map((a) => a.startDate).sort()[0] : null;
+    const end = mine.length ? mine.map((a) => a.endDate).sort().slice(-1)[0] : null;
+    return { v, start, end };
+  });
+  return info
+    .filter((i) => !i.end || i.end.slice(0, 10) >= today)
+    .map((i) => ({ ...i, inProgress: Boolean(i.start && i.start.slice(0, 10) <= today) }))
+    .sort((a, b) => {
+      if (a.inProgress !== b.inProgress) return a.inProgress ? -1 : 1;
+      const ka = a.start ?? `${a.v.year}-${a.v.season === 'Verano' ? '01' : '07'}`;
+      const kb = b.start ?? `${b.v.year}-${b.v.season === 'Verano' ? '01' : '07'}`;
+      return ka.localeCompare(kb);
+    })
+    .map((i) => i.v);
+}
